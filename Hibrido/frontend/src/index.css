@@ -1,0 +1,48 @@
+:root {
+  --color-primary: #8DACA0;
+  --color-secondary: #A9C1B8;
+  --color-soft: #C6D6D0;
+  --color-light: #E2EAE7;
+  --color-white: #FFFFFF;
+
+  --color-text: #1E2D27;
+  --color-text-muted: #4A5F57;
+  --color-border: #C6D6D0;
+
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-light);
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--color-light);
+  color: var(--color-text);
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+code, pre, .mono {
+  font-family: var(--mono);
+}
