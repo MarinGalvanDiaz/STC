@@ -1,149 +1,231 @@
 import React, { useState, useEffect } from 'react';
-import { modPow, DH_PRESETS, deriveAesKeyFromK } from '../utils/cryptoUtils';
+import Swal from 'sweetalert2';
+import {
+  modPow,
+  DH_PRESETS,
+  deriveAesKeyFromK,
+  isPrimeBigInt,
+  calculateEulerPhi,
+  findPrimitiveRoots,
+  getBitLength
+} from '../utils/cryptoUtils';
 
 export default function DiffieHellmanView({ onSetAesKey, onNavigateToCipher }) {
-  // Preset seleccionado (-1 significa ninguno preseleccionado)
+  // Configuración de Presets
   const [selectedPresetIndex, setSelectedPresetIndex] = useState(-1);
 
-  // Parámetros públicos (inician vacíos, sin datos de prueba precargados)
-  const [p, setP] = useState('');
-  const [g, setG] = useState('');
+  // Parámetros Públicos
+  const [n, setN] = useState(''); // Módulo primo n
+  const [phiN, setPhiN] = useState(''); // Euler Phi
+  const [primitiveRoots, setPrimitiveRoots] = useState([]); // Raíces primitivas encontradas
+  const [g, setG] = useState(''); // Raíz primitiva elegida
+  const [isNPrime, setIsNPrime] = useState(null); // Estado de primalidad
+  const [nBitLen, setNBitLen] = useState(0);
 
-  // Valores de Alice (Usuario)
-  const [a, setA] = useState(''); // Clave privada de Alice
-  const [calculatedA, setCalculatedA] = useState('');
+  // Selección de Rol
+  const [userRole, setUserRole] = useState('A'); // 'A' o 'B'
 
-  // Clave de contraparte (k o B recibida de Bob)
-  const [peerKey, setPeerKey] = useState(''); // Clave pública de la contraparte
+  // Claves Privadas e Intermedias
+  const [privKey, setPrivKey] = useState(''); // a o b (Rango 1 a n-2)
+  const [privKeyError, setPrivKeyError] = useState('');
+  const [pubKeyCalculated, setPubKeyCalculated] = useState(''); // K_a o K_b calculada
 
-  // Clave compartida K calculada
-  const [calculatedK, setCalculatedK] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  // Paso 2: Cálculo del Secreto Compartido Final K
+  const [remotePubKey, setRemotePubKey] = useState(''); // K_b si soy A, o K_a si soy B
+  const [finalK, setFinalK] = useState('');
+
+  // Simulador Bilateral
+  const [showSimulator, setShowSimulator] = useState(false);
+  const [simBobPriv, setSimBobPriv] = useState('');
+  const [simBobPub, setSimBobPub] = useState('');
+  const [simBobFinalK, setSimBobFinalK] = useState('');
+
+  // Notificaciones internas
   const [notification, setNotification] = useState('');
 
-  // Modo simulación bilateral (Alice & Bob)
-  const [showSimulator, setShowSimulator] = useState(false);
-  const [bobPrivateKey, setBobPrivateKey] = useState('');
-  const [bobPublicB, setBobPublicB] = useState('');
-  const [bobCalculatedK, setBobCalculatedK] = useState('');
+  // Helper para alertas de advertencia de SweetAlert
+  const showAlertWarning = (message) => {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Campos incompletos',
+      text: message,
+      confirmButtonText: 'Entendido'
+    });
+  };
 
-  // Manejar cambio de preset
+  // Cargar presets rápidos
   const handlePresetChange = (idx) => {
     setSelectedPresetIndex(idx);
     if (idx >= 0 && idx < DH_PRESETS.length) {
-      setP(DH_PRESETS[idx].p);
-      setG(DH_PRESETS[idx].g);
+      const preset = DH_PRESETS[idx];
+      setN(preset.p);
+      setG(preset.g);
     }
   };
 
-  // Calcular clave pública A = g^a mod p
+  // 1. Validar n, calcular bit length, phi(n) y raíces primitivas
   useEffect(() => {
-    setErrorMsg('');
-    if (!p || !g || !a) {
-      setCalculatedA('');
+    setPhiN('');
+    setPrimitiveRoots([]);
+    setIsNPrime(null);
+
+    if (!n) {
+      setNBitLen(0);
       return;
     }
-    try {
-      const pNum = BigInt(p);
-      const gNum = BigInt(g);
-      const aNum = BigInt(a);
 
-      if (pNum <= 1n) {
-        setErrorMsg('El número primo p debe ser mayor que 1.');
-        setCalculatedA('');
+    const bits = getBitLength(n);
+    setNBitLen(bits);
+
+    try {
+      const nBig = BigInt(n);
+      if (nBig <= 2n) {
+        setIsNPrime(false);
         return;
       }
-      if (aNum < 1n) {
-        setErrorMsg('La clave privada a debe ser mayor o igual a 1.');
-        setCalculatedA('');
-        return;
-      }
 
-      const resultA = modPow(gNum, aNum, pNum);
-      setCalculatedA(resultA.toString());
-    } catch (err) {
-      setErrorMsg('Error en los valores ingresados: asegúrate de ingresar números enteros válidos.');
-      setCalculatedA('');
-    }
-  }, [p, g, a]);
-
-  // Calcular clave compartida K = (peerKey)^a mod p
-  const handleCalculateK = () => {
-    setErrorMsg('');
-    if (!p || !a || !peerKey) {
-      setErrorMsg('Debes ingresar el módulo p, tu clave privada a y la clave de la contraparte (k / B).');
-      return;
-    }
-    try {
-      const pNum = BigInt(p);
-      const aNum = BigInt(a);
-      const peerNum = BigInt(peerKey);
-
-      const secretK = modPow(peerNum, aNum, pNum);
-      setCalculatedK(secretK.toString());
-      showToast('Clave compartida K calculada exitosamente.');
-    } catch (err) {
-      setErrorMsg('No se pudo calcular K: verifica que los números ingresados sean válidos.');
-    }
-  };
-
-  // Simulación del lado de Bob
-  useEffect(() => {
-    if (!showSimulator || !p || !g || !bobPrivateKey) return;
-    try {
-      const pNum = BigInt(p);
-      const gNum = BigInt(g);
-      const bNum = BigInt(bobPrivateKey);
-
-      const bPub = modPow(gNum, bNum, pNum);
-      setBobPublicB(bPub.toString());
-
-      if (calculatedA) {
-        const bK = modPow(BigInt(calculatedA), bNum, pNum);
-        setBobCalculatedK(bK.toString());
-      }
-    } catch (e) {
-      // Ignorar errores transitorios en la simulación
-    }
-  }, [showSimulator, p, g, bobPrivateKey, calculatedA]);
-
-  const generateRandomA = () => {
-    if (!p) {
-      setErrorMsg('Por favor ingresa primero el módulo primo p.');
-      return;
-    }
-    try {
-      const pNum = BigInt(p);
-      let randA;
-      if (pNum > 1000n) {
-        randA = BigInt(Math.floor(Math.random() * 900) + 100);
-      } else if (pNum > 5n) {
-        randA = BigInt(Math.floor(Math.random() * Number(pNum - 3n)) + 2);
+      if (bits <= 16) {
+        const prime = isPrimeBigInt(nBig);
+        setIsNPrime(prime);
+        if (prime) {
+          const phi = calculateEulerPhi(nBig);
+          setPhiN(phi.toString());
+          const roots = findPrimitiveRoots(nBig, 30);
+          setPrimitiveRoots(roots);
+          if (roots.length > 0 && !roots.includes(g)) {
+            setG(roots[0]);
+          }
+        }
       } else {
-        randA = 3n;
+        setIsNPrime(true);
+        setPhiN((nBig - 1n).toString());
       }
-      setA(randA.toString());
-      showToast(`Clave privada 'a' generada: ${randA}`);
     } catch (e) {
-      setA('7');
+      setIsNPrime(false);
+    }
+  }, [n]);
+
+  // 2. Validar que la clave privada (a o b) esté estrictamente en Rango [1, n - 2]
+  useEffect(() => {
+    setPrivKeyError('');
+    setPubKeyCalculated('');
+    if (!privKey || !n) return;
+
+    try {
+      const pVal = BigInt(privKey);
+      const nVal = BigInt(n);
+      const maxVal = nVal - 2n;
+
+      if (pVal < 1n || pVal > maxVal) {
+        setPrivKeyError(`El valor debe estar estrictamente entre 1 y n-2 (Máximo: ${maxVal.toString()})`);
+      }
+    } catch (e) {
+      setPrivKeyError('Ingresa un número entero válido.');
+    }
+  }, [privKey, n]);
+
+  // 3. Calcular K_a o K_b pública = g^(a o b) mod n
+  const handleCalculatePublicExchangeKey = () => {
+    if (!n) {
+      showAlertWarning('Por favor, ingresa el módulo primo (n) antes de continuar.');
+      return;
+    }
+    if (!g) {
+      showAlertWarning('Por favor, selecciona o ingresa la raíz primitiva (g) antes de continuar.');
+      return;
+    }
+    if (!privKey) {
+      showAlertWarning(`Por favor, ingresa tu clave privada (${userRole.toLowerCase()}) antes de continuar.`);
+      return;
+    }
+    if (privKeyError) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error en la clave privada',
+        text: 'Corrige los errores de la clave privada antes de continuar.',
+        confirmButtonText: 'Entendido'
+      });
+      return;
+    }
+
+    try {
+      const res = modPow(g, privKey, n);
+      setPubKeyCalculated(res.toString());
+      showToast(`Clave K_${userRole.toLowerCase()} pública calculada exitosamente.`);
+    } catch (e) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de cálculo',
+        text: 'Ocurrió un error en el cálculo modular.'
+      });
     }
   };
 
-  const handleExportToAes = () => {
-    if (!calculatedK) {
-      setErrorMsg('Primero calcula la clave K para poder transferirla.');
+  // 4. Calcular Secreto Compartido Final K = (K_remota)^(a o b) mod n
+  const handleCalculateFinalK = () => {
+    if (!n || !g || !privKey) {
+      showAlertWarning('Debes completar el Paso 1 y Paso 2 (Módulo n, raíz g y clave privada) antes de calcular K.');
       return;
     }
-    // Generamos una clave AES de 16 caracteres derivada de K
-    const aesKey = deriveAesKeyFromK(calculatedK, 16);
-    if (onSetAesKey) {
-      onSetAesKey(aesKey);
+    if (!pubKeyCalculated) {
+      showAlertWarning(`Primero debes calcular tu clave pública K_${userRole.toLowerCase()} en el Paso 2.`);
+      return;
     }
-    showToast(`Clave K exportada como Llave AES (${aesKey})`);
-    if (onNavigateToCipher) {
-      setTimeout(() => onNavigateToCipher(), 500);
+    if (!remotePubKey) {
+      showAlertWarning(`Por favor, ingresa o sube la clave pública recibida (K_${userRole === 'A' ? 'b' : 'a'}) para continuar.`);
+      return;
+    }
+
+    try {
+      const resK = modPow(remotePubKey, privKey, n);
+      setFinalK(resK.toString());
+      showToast('Secreto compartido K derivado con éxito.');
+    } catch (e) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de cálculo',
+        text: 'Ocurrió un error al calcular el secreto K.'
+      });
     }
   };
+
+  // Cargar archivo .txt para K_a o K_b recibida
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result.trim();
+      setRemotePubKey(content);
+      showToast('Clave cargada desde archivo .txt');
+    };
+    reader.readAsText(file);
+  };
+
+  // Descargar K_a o K_b
+  const downloadKeyTxt = (content, filename) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Simulación de Bob
+  useEffect(() => {
+    if (!showSimulator || !n || !g || !simBobPriv) return;
+    try {
+      const bPub = modPow(g, simBobPriv, n);
+      setSimBobPub(bPub.toString());
+
+      if (pubKeyCalculated) {
+        const bK = modPow(pubKeyCalculated, simBobPriv, n);
+        setSimBobFinalK(bK.toString());
+      }
+    } catch (e) {}
+  }, [showSimulator, n, g, simBobPriv, pubKeyCalculated]);
 
   const showToast = (msg) => {
     setNotification(msg);
@@ -151,305 +233,270 @@ export default function DiffieHellmanView({ onSetAesKey, onNavigateToCipher }) {
   };
 
   return (
-    <div className="view-container">
-      <div className="view-header">
-        <div className="header-badge">Paso 1: Intercambio Criptográfico</div>
-        <h2>Intercambio de Claves Diffie-Hellman</h2>
-        <p className="subtitle">
-          Establece un secreto compartido K a través de un canal inseguro sin revelar las claves privadas.
-        </p>
-      </div>
-
-      {notification && (
-        <div className="alert alert-success">
-          <span>{notification}</span>
-        </div>
-      )}
-
-      {errorMsg && (
-        <div className="alert alert-danger">
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {/* Parámetros Públicos Globales */}
-      <div className="card">
-        <div className="card-header">
-          <h3>Parámetros Públicos Globales (p y g)</h3>
-          <span className="info-tag">Públicos / Conocidos por las partes</span>
-        </div>
-        
-        <div className="preset-selector">
-          <label>Cargar plantilla rápida (opcional):</label>
-          <div className="preset-buttons">
-            {DH_PRESETS.map((preset, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className={`preset-btn ${selectedPresetIndex === idx ? 'active' : ''}`}
-                onClick={() => handlePresetChange(idx)}
-              >
-                {preset.name}
-              </button>
-            ))}
-          </div>
+      <div className="view-container">
+        <div className="view-header">
+          <div className="header-badge">Paso 1: Intercambio Criptográfico</div>
+          <h2>Intercambio de Claves Diffie-Hellman</h2>
+          <p className="subtitle">
+            Estándares RFC 3526 / RFC 7919 con validación de raíces primitivas y cálculo modular seguro.
+          </p>
         </div>
 
-        <div className="grid-2">
-          <div className="form-group">
-            <label htmlFor="dh-p">
-              <strong>Módulo Primo (p):</strong>
-              <small className="help-text">Número primo base para la aritmética modular</small>
-            </label>
-            <input
-              id="dh-p"
-              type="text"
-              value={p}
-              onChange={(e) => {
-                setP(e.target.value);
-                setSelectedPresetIndex(-1);
-              }}
-              placeholder="Ingresa el número primo p"
-              className="code-input"
-            />
-          </div>
+        {notification && <div className="alert alert-success"><span>{notification}</span></div>}
 
-          <div className="form-group">
-            <label htmlFor="dh-g">
-              <strong>Generador / Base (g):</strong>
-              <small className="help-text">Raíz primitiva módulo p</small>
-            </label>
-            <input
-              id="dh-g"
-              type="text"
-              value={g}
-              onChange={(e) => {
-                setG(e.target.value);
-                setSelectedPresetIndex(-1);
-              }}
-              placeholder="Ingresa la base o generador g"
-              className="code-input"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Panel Principal: Clave Privada y Cálculo de A y K */}
-      <div className="grid-2">
-        {/* Lado Local: Clave privada a y cálculo de A */}
+        {/* Parámetros Globales (n y g) */}
         <div className="card">
           <div className="card-header">
-            <h3>Clave Privada y Cálculo de A</h3>
-            <span className="party-badge alice-badge">Participante Local (Alice)</span>
+            <h3>1. Parámetros Públicos (Módulo n y Generador g)</h3>
+            <span className="info-tag">Longitud n: {nBitLen} bits</span>
           </div>
 
-          <div className="form-group">
-            <div className="label-with-action">
-              <label htmlFor="dh-a">
-                <strong>Clave Privada (a):</strong>
-                <small className="help-text">Tu secreto personal (no se transmite)</small>
+          <div className="preset-selector">
+            <label>Cargar plantilla rápida de estándar:</label>
+            <div className="preset-buttons">
+              {DH_PRESETS.map((preset, idx) => (
+                  <button
+                      key={idx}
+                      type="button"
+                      className={`preset-btn ${selectedPresetIndex === idx ? 'active' : ''}`}
+                      onClick={() => handlePresetChange(idx)}
+                  >
+                    {preset.name}
+                  </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid-2">
+            <div className="form-group" style={{ minWidth: 0 }}>
+              <label>
+                <strong>Módulo Primo (n):</strong>
+                <small className="help-text">Se recomienda un número primo largo (ej. 4096 bits para producción).</small>
               </label>
-              <button
-                type="button"
-                className="btn-link"
-                onClick={generateRandomA}
-              >
-                Generar aleatorio
-              </button>
-            </div>
-            <input
-              id="dh-a"
-              type="text"
-              value={a}
-              onChange={(e) => setA(e.target.value)}
-              placeholder="Ingresa tu clave privada a"
-              className="code-input"
-            />
-          </div>
-
-          <div className="formula-box">
-            <div className="formula-title">Fórmula:</div>
-            <div className="formula-content">
-              <code>A = g^a mod p</code>
-            </div>
-          </div>
-
-          <div className="form-group result-group">
-            <label>
-              <strong>Clave Pública Calculada (A):</strong>
-              <small className="help-text">Este valor se comparte públicamente con la contraparte</small>
-            </label>
-            <div className="output-box code-display">
-              {calculatedA || <span className="placeholder">Aún no calculada</span>}
-            </div>
-            {calculatedA && (
-              <button
-                type="button"
-                className="btn-secondary btn-sm copy-btn"
-                onClick={() => {
-                  navigator.clipboard.writeText(calculatedA);
-                  showToast('Clave pública A copiada al portapapeles.');
-                }}
-              >
-                Copiar A
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Cálculo del Secreto Compartido K */}
-        <div className="card">
-          <div className="card-header">
-            <h3>Cálculo del Secreto Compartido K</h3>
-            <span className="party-badge shared-badge">Clave Final</span>
-          </div>
-
-          <div className="form-group">
-            <div className="label-with-action">
-              <label htmlFor="dh-peer-k">
-                <strong>Clave Pública de la Contraparte (k / B):</strong>
-                <small className="help-text">La clave pública recibida de la otra parte</small>
-              </label>
-              {showSimulator && bobPublicB && (
-                <button
-                  type="button"
-                  className="btn-link"
-                  onClick={() => setPeerKey(bobPublicB)}
-                >
-                  Cargar B de la simulación ({bobPublicB})
-                </button>
+              <input
+                  type="text"
+                  value={n}
+                  onChange={(e) => { setN(e.target.value); setSelectedPresetIndex(-1); }}
+                  placeholder="Ingresa un número primo n"
+                  className="code-input"
+              />
+              {isNPrime === false && (
+                  <small className="text-danger">El valor ingresado no es un número primo válido.</small>
+              )}
+              {isNPrime === true && (
+                  <small className="text-success">El número es primo. $\phi(n) = {phiN}$</small>
               )}
             </div>
-            <input
-              id="dh-peer-k"
-              type="text"
-              value={peerKey}
-              onChange={(e) => setPeerKey(e.target.value)}
-              placeholder="Ingresa la clave pública recibida (k o B)"
-              className="code-input"
-            />
+
+            <div className="form-group" style={{ minWidth: 0 }}>
+              <label>
+                <strong>Generador / Raíz Primitiva (g):</strong>
+                <small className="help-text">Debe ser una raíz primitiva módulo n.</small>
+              </label>
+              {primitiveRoots.length > 0 ? (
+                  <select
+                      value={g}
+                      onChange={(e) => setG(e.target.value)}
+                      className="code-input"
+                  >
+                    {primitiveRoots.map((root, i) => (
+                        <option key={i} value={root}>g = {root}</option>
+                    ))}
+                  </select>
+              ) : (
+                  <input
+                      type="text"
+                      value={g}
+                      onChange={(e) => setG(e.target.value)}
+                      placeholder="Ingresa la raíz primitiva g"
+                      className="code-input"
+                  />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Selección de Rol y Parámetros Privados */}
+        <div className="card">
+          <div className="card-header">
+            <h3>2. Configuración de Rol y Clave Privada</h3>
           </div>
 
-          <div className="formula-box">
-            <div className="formula-title">Fórmula:</div>
-            <div className="formula-content">
-              <code>K = (k)^a mod p</code>
+          <div className="grid-2">
+            <div className="form-group" style={{ minWidth: 0 }}>
+              <label><strong>Selecciona tu Rol:</strong></label>
+              <div className="role-selector">
+                <button
+                    type="button"
+                    className={`preset-btn ${userRole === 'A' ? 'active' : ''}`}
+                    onClick={() => { setUserRole('A'); setPubKeyCalculated(''); setFinalK(''); }}
+                >
+                  Usuario A (Alice)
+                </button>
+                <button
+                    type="button"
+                    className={`preset-btn ${userRole === 'B' ? 'active' : ''}`}
+                    onClick={() => { setUserRole('B'); setPubKeyCalculated(''); setFinalK(''); }}
+                >
+                  Usuario B (Bob)
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ minWidth: 0 }}>
+              <label>
+                <strong>Clave Privada ({userRole.toLowerCase()}):</strong>
+                <small className="help-text">Condición obligatoria: Debe ser un entero entre 1 y n-2 ({getBitLength(privKey)} bits).</small>
+              </label>
+              <input
+                  type="text"
+                  value={privKey}
+                  onChange={(e) => setPrivKey(e.target.value)}
+                  placeholder={`Ingresa ${userRole.toLowerCase()} (1 <= ${userRole.toLowerCase()} <= n-2)`}
+                  className={`code-input ${privKeyError ? 'input-error' : ''}`}
+              />
+              {privKeyError && <small className="text-danger">{privKeyError}</small>}
             </div>
           </div>
 
           <button
-            type="button"
-            className="btn-primary full-width"
-            onClick={handleCalculateK}
+              type="button"
+              className="btn-primary full-width"
+              onClick={handleCalculatePublicExchangeKey}
           >
-            Calcular Clave Compartida K
+            Calcular K_{userRole.toLowerCase()} = g^{userRole.toLowerCase()} mod n
           </button>
 
-          <div className="form-group result-group">
-            <label>
-              <strong>Resultado de K:</strong>
-              <small className="help-text">Secreto criptográfico acordado</small>
-            </label>
-            <div className="output-box code-display secret-display">
-              {calculatedK ? (
-                <strong>{calculatedK}</strong>
-              ) : (
-                <span className="placeholder">Presiona "Calcular Clave Compartida K"</span>
-              )}
-            </div>
+          {pubKeyCalculated && (
+              <div className="result-group" style={{ marginTop: '15px' }}>
+                <label><strong>Clave Pública Calculada (K_{userRole.toLowerCase()}):</strong></label>
+                <div className="output-box code-display">{pubKeyCalculated}</div>
+                <div className="action-buttons-row" style={{ marginTop: '10px' }}>
+                  <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(pubKeyCalculated);
+                        showToast('Copiado al portapapeles');
+                      }}
+                  >
+                    Copiar K_{userRole.toLowerCase()}
+                  </button>
+                  <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => downloadKeyTxt(pubKeyCalculated, `K_${userRole.toLowerCase()}.txt`)}
+                  >
+                    Descargar K_{userRole.toLowerCase()} (.txt)
+                  </button>
+                </div>
+              </div>
+          )}
+        </div>
+
+        {/* Fase 3: Obtener clave remota y calcular K final */}
+        <div className="card">
+          <div className="card-header">
+            <h3>3. Cálculo del Secreto Compartido Final (K)</h3>
           </div>
 
-          {calculatedK && (
-            <div className="action-buttons-row">
-              <button
-                type="button"
-                className="btn-secondary flex-1"
-                onClick={() => {
-                  navigator.clipboard.writeText(calculatedK);
-                  showToast('Clave K copiada al portapapeles.');
-                }}
-              >
-                Copiar K
-              </button>
-              <button
-                type="button"
-                className="btn-primary flex-1"
-                onClick={handleExportToAes}
-              >
-                Usar en Cifrador AES ➔
-              </button>
-            </div>
+          <div className="form-group" style={{ minWidth: 0 }}>
+            <label>
+              <strong>Ingresa o sube la clave pública recibida (K_{userRole === 'A' ? 'b' : 'a'}):</strong>
+            </label>
+            <input
+                type="text"
+                value={remotePubKey}
+                onChange={(e) => setRemotePubKey(e.target.value)}
+                placeholder={`Pega aquí la clave K_${userRole === 'A' ? 'b' : 'a'} recibida`}
+                className="code-input"
+            />
+            <input
+                type="file"
+                accept=".txt"
+                onChange={handleFileUpload}
+                style={{ marginTop: '8px' }}
+            />
+          </div>
+
+          <button
+              type="button"
+              className="btn-primary full-width"
+              onClick={handleCalculateFinalK}
+          >
+            Calcular Clave Final K = (K_{userRole === 'A' ? 'b' : 'a'})^{userRole.toLowerCase()} mod n
+          </button>
+
+          {finalK && (
+              <div className="result-group" style={{ marginTop: '15px' }}>
+                <label><strong>Secreto Compartido K Calculado:</strong></label>
+                <div className="output-box code-display secret-display">
+                  <strong>{finalK}</strong>
+                </div>
+                <div className="action-buttons-row" style={{ marginTop: '10px' }}>
+                  <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(finalK);
+                        showToast('K copiada');
+                      }}
+                  >
+                    Copiar K
+                  </button>
+                  <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => {
+                        const aesKey = deriveAesKeyFromK(finalK, 16);
+                        if (onSetAesKey) onSetAesKey(aesKey);
+                        showToast(`K exportada a AES (${aesKey})`);
+                        if (onNavigateToCipher) setTimeout(onNavigateToCipher, 500);
+                      }}
+                  >
+                    Usar en Cifrador AES -{'>'}
+                  </button>
+                </div>
+              </div>
+          )}
+        </div>
+
+        {/* Simulador Bilateral */}
+        <div className="card accordion-card">
+          <div className="accordion-header" onClick={() => setShowSimulator(!showSimulator)}>
+            <strong>Simulador Bilateral en Vivo</strong>
+            <span>{showSimulator ? '[Ocultar]' : '[Mostrar]'}</span>
+          </div>
+
+          {showSimulator && (
+              <div className="accordion-content">
+                <div className="simulator-grid">
+                  <div className="sim-column">
+                    <h4>{userRole === 'A' ? 'Usuario A (Local)' : 'Usuario A (Simulado)'}</h4>
+                    <p>Clave privada: <code>a = {userRole === 'A' ? privKey : '(simulado)'}</code></p>
+                    <p>Clave pública: <code>K_a = {userRole === 'A' ? pubKeyCalculated : remotePubKey}</code></p>
+                    <p>K Final: <code>{userRole === 'A' ? finalK : simBobFinalK}</code></p>
+                  </div>
+
+                  <div className="sim-column">
+                    <h4>{userRole === 'B' ? 'Usuario B (Local)' : 'Usuario B (Contraparte)'}</h4>
+                    <div className="form-group" style={{ minWidth: 0 }}>
+                      <label><small>Clave Privada b:</small></label>
+                      <input
+                          type="text"
+                          value={userRole === 'B' ? privKey : simBobPriv}
+                          onChange={(e) => setSimBobPriv(e.target.value)}
+                          disabled={userRole === 'B'}
+                          className="code-input"
+                      />
+                    </div>
+                    <p>Clave pública: <code>K_b = {userRole === 'B' ? pubKeyCalculated : simBobPub}</code></p>
+                    <p>K Final: <code>{userRole === 'B' ? finalK : simBobFinalK}</code></p>
+                  </div>
+                </div>
+              </div>
           )}
         </div>
       </div>
-
-      {/* Simulador bilateral opcional */}
-      <div className="card accordion-card">
-        <div 
-          className="accordion-header"
-          onClick={() => setShowSimulator(!showSimulator)}
-        >
-          <div className="accordion-title">
-            <strong>Simulador Bilateral (Alice y Bob)</strong>
-          </div>
-          <span className="accordion-toggle">{showSimulator ? '[Ocultar]' : '[Mostrar]'}</span>
-        </div>
-
-        {showSimulator && (
-          <div className="accordion-content">
-            <p className="text-muted">
-              Demuestra cómo ambas partes con claves privadas independientes (a y b) obtienen la misma clave compartida K.
-            </p>
-            <div className="simulator-grid">
-              <div className="sim-column alice-col">
-                <h4>Alice (Local)</h4>
-                <p>1. Clave Privada: <code>a = {a || '(vacía)'}</code></p>
-                <p>2. Envía Pública: <code>A = {calculatedA || '(pendiente)'}</code></p>
-                <p>3. Recibe Pública: <code>B = {peerKey || '(pendiente)'}</code></p>
-                <div className="sim-result">
-                  <strong>K calculada por Alice:</strong>
-                  <div className="sim-k">{calculatedK || 'Pendiente'}</div>
-                </div>
-              </div>
-
-              <div className="sim-center-arrow">
-                <span>&lt;--- Canal Inseguro ---&gt;</span>
-                <small>Intercambio de A y B</small>
-              </div>
-
-              <div className="sim-column bob-col">
-                <h4>Bob (Contraparte)</h4>
-                <div className="form-group">
-                  <label><small>Clave Privada de Bob (b):</small></label>
-                  <input
-                    type="text"
-                    value={bobPrivateKey}
-                    placeholder="Ingresa b para Bob"
-                    onChange={(e) => setBobPrivateKey(e.target.value)}
-                    className="code-input"
-                  />
-                </div>
-                <p>Envía Pública: <code>B = {bobPublicB || '(pendiente)'}</code></p>
-                <p>Recibe Pública: <code>A = {calculatedA || '(pendiente)'}</code></p>
-                <div className="sim-result">
-                  <strong>K calculada por Bob:</strong>
-                  <div className="sim-k">{bobCalculatedK || 'Pendiente'}</div>
-                </div>
-              </div>
-            </div>
-
-            {calculatedK && bobCalculatedK && (
-              <div className={`match-badge ${calculatedK === bobCalculatedK ? 'match-success' : 'match-fail'}`}>
-                {calculatedK === bobCalculatedK ? (
-                  <span>Coincidencia verificada: Ambas partes obtienen K = {calculatedK}</span>
-                ) : (
-                  <span>Las claves no coinciden. Asegúrate de que el valor k recibido corresponda a B.</span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

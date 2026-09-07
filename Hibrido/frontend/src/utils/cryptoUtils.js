@@ -73,7 +73,7 @@ export function deriveAesKeyFromK(kValue, lengthInBytes = 32) {
   const kStr = kValue.toString();
   let hex = BigInt(kStr).toString(16);
   if (hex.length % 2 !== 0) hex = "0" + hex;
-  
+
   const targetChars = lengthInBytes * 2;
   if (hex.length < targetChars) {
     return hex.padStart(targetChars, "0");
@@ -107,8 +107,6 @@ export function generateRandomIv(byteLength = 16) {
 
 /**
  * Analiza un texto para identificar si contiene la sección de 'Firma digital'.
-/**
- * Analiza un texto para identificar si contiene la sección de 'Firma digital'.
  * Retorna el contenido del mensaje antes de la firma y la firma en Base64.
  * Preserva idéntico byte a byte el contenido previo, incluyendo saltos de línea (\n, \r\n) y UTF-8.
  */
@@ -117,42 +115,26 @@ export function parseSignedDocument(rawText) {
     return { content: '', signature: '', hasSignature: false };
   }
 
-  // Detecta el encabezado "Firma digital" precedido por salto de línea (\r?\n) al final del archivo
   const regex = /(?:\r?\n)Firma digital\r?\n([\s\S]*)$/i;
   const match = rawText.match(regex);
 
   if (match) {
-    // Todo lo que está exactamente antes del salto de línea del separador es el contenido intacto
     const content = rawText.slice(0, match.index);
     const signature = match[1].trim();
-    return {
-      content,
-      signature,
-      hasSignature: true
-    };
+    return { content, signature, hasSignature: true };
   }
 
-  // Si el archivo empieza directamente con "Firma digital\n"
   const regexStart = /^Firma digital\r?\n([\s\S]*)$/i;
   const matchStart = rawText.match(regexStart);
   if (matchStart) {
-    return {
-      content: '',
-      signature: matchStart[1].trim(),
-      hasSignature: true
-    };
+    return { content: '', signature: matchStart[1].trim(), hasSignature: true };
   }
 
-  return {
-    content: rawText,
-    signature: '',
-    hasSignature: false
-  };
+  return { content: rawText, signature: '', hasSignature: false };
 }
 
 /**
  * Concatena el contenido del mensaje, escribe "Firma digital", salto de línea y la firma.
- * Utiliza siempre \nFirma digital\n para que el contenido original anterior permanezca inalterado.
  */
 export function createSignedDocument(content, signatureBase64) {
   const safeContent = content !== undefined && content !== null ? String(content) : '';
@@ -165,10 +147,6 @@ export function createSignedDocument(content, signatureBase64) {
 // CÁLCULO DE DIGESTO CON SHA-3 (SHA3-256)
 // ==========================================
 
-/**
- * Calcula el digesto SHA-3 (SHA3-256) de una cadena de texto o bytes UTF-8.
- * Retorna una cadena hexadecimal de 64 caracteres en minúsculas.
- */
 export function calculateSha3Hex(data) {
   if (data === undefined || data === null) {
     return "";
@@ -183,11 +161,11 @@ export function calculateSha3Hex(data) {
 
 function base64ToBytes(base64) {
   const cleaned = base64.replace(/\s+/g, "");
-  const decodeFn = typeof atob !== 'undefined' 
-    ? atob 
-    : (typeof globalThis !== 'undefined' && globalThis.atob) 
-    ? globalThis.atob 
-    : (b) => Buffer.from(b, 'base64').toString('binary');
+  const decodeFn = typeof atob !== 'undefined'
+      ? atob
+      : (typeof globalThis !== 'undefined' && globalThis.atob)
+          ? globalThis.atob
+          : (b) => Buffer.from(b, 'base64').toString('binary');
   const binary = decodeFn(cleaned);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -201,11 +179,11 @@ function bytesToBase64(bytes) {
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  const encodeFn = typeof btoa !== 'undefined' 
-    ? btoa 
-    : (typeof globalThis !== 'undefined' && globalThis.btoa) 
-    ? globalThis.btoa 
-    : (b) => Buffer.from(b, 'binary').toString('base64');
+  const encodeFn = typeof btoa !== 'undefined'
+      ? btoa
+      : (typeof globalThis !== 'undefined' && globalThis.btoa)
+          ? globalThis.btoa
+          : (b) => Buffer.from(b, 'binary').toString('base64');
   return encodeFn(binary);
 }
 
@@ -222,9 +200,6 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-/**
- * Extrae todos los enteros INTEGER codificados en ASN.1 DER
- */
 function extractAsn1Integers(buf) {
   const integers = [];
   let pos = 0;
@@ -236,14 +211,14 @@ function extractAsn1Integers(buf) {
       length = 0;
       for (let i = 0; i < nBytes; i++) length = (length << 8) | buf[pos++];
     }
-    if (tag === 0x02) { // INTEGER
+    if (tag === 0x02) {
       integers.push(buf.subarray(pos, pos + length));
       pos += length;
-    } else if (tag === 0x30 || tag === 0x04) { // SEQUENCE o OCTET STRING
+    } else if (tag === 0x30 || tag === 0x04) {
       integers.push(...extractAsn1Integers(buf.subarray(pos, pos + length)));
       pos += length;
-    } else if (tag === 0x03) { // BIT STRING
-      pos++; // saltar bits no usados
+    } else if (tag === 0x03) {
+      pos++;
       length--;
       integers.push(...extractAsn1Integers(buf.subarray(pos, pos + length)));
       pos += length;
@@ -254,9 +229,6 @@ function extractAsn1Integers(buf) {
   return integers;
 }
 
-/**
- * Parsea una clave privada RSA en formato PEM (soporta PKCS#8 y PKCS#1)
- */
 export function parseRsaPrivateKey(pem) {
   if (!pem || typeof pem !== 'string') {
     throw new Error('La clave privada proporcionada está vacía.');
@@ -290,9 +262,6 @@ export function parseRsaPrivateKey(pem) {
   return { n, d, e, byteLen };
 }
 
-/**
- * Parsea una clave pública RSA en formato PEM (soporta SPKI y PKCS#1)
- */
 export function parseRsaPublicKey(pem) {
   if (!pem || typeof pem !== 'string') {
     throw new Error('La clave pública proporcionada está vacía.');
@@ -323,27 +292,18 @@ export function parseRsaPublicKey(pem) {
   return { n, e, byteLen };
 }
 
-// OID estándar NIST/RFC 8017 para SHA3-256 DigestInfo en PKCS#1 v1.5:
-// 30 31 30 0d 06 09 60 86 48 01 65 03 04 02 08 05 00 04 20
 const SHA3_256_DIGEST_INFO_PREFIX = hexToBytes("3031300d060960864801650304020805000420");
 
-/**
- * Firma digitalmente un texto usando RSA con el digesto SHA-3 (SHA3-256).
- * Emplea relleno estándar PKCS#1 v1.5 y exponenciación modular S = (EM)^d mod n.
- */
 export async function signDataWithRsa(privateKeyPem, data) {
   const { n, d, byteLen } = parseRsaPrivateKey(privateKeyPem);
-  
-  // 1. Calcular digesto SHA-3 (SHA3-256)
+
   const hashHex = calculateSha3Hex(data);
   const hashBytes = hexToBytes(hashHex);
 
-  // 2. Construir bloque T = DigestInfo || H
   const tBytes = new Uint8Array(SHA3_256_DIGEST_INFO_PREFIX.length + hashBytes.length);
   tBytes.set(SHA3_256_DIGEST_INFO_PREFIX, 0);
   tBytes.set(hashBytes, SHA3_256_DIGEST_INFO_PREFIX.length);
 
-  // 3. Relleno PKCS#1 v1.5: EM = 00 01 FF ... FF 00 || T
   const em = new Uint8Array(byteLen);
   em[0] = 0x00;
   em[1] = 0x01;
@@ -355,7 +315,6 @@ export async function signDataWithRsa(privateKeyPem, data) {
   em[2 + psLen] = 0x00;
   em.set(tBytes, 2 + psLen + 1);
 
-  // 4. Exponenciación modular S = (EM)^d mod n
   const mBigInt = BigInt('0x' + bytesToHex(em));
   const sBigInt = modPow(mBigInt, d, n);
   const sHex = sBigInt.toString(16).padStart(byteLen * 2, '0');
@@ -364,28 +323,17 @@ export async function signDataWithRsa(privateKeyPem, data) {
   return bytesToBase64(signatureBytes);
 }
 
-/**
- * Descifra la firma digital con la clave pública RSA (EM' = S^e mod n)
- * y extrae los 32 bytes (64 caracteres hexadecimales) correspondientes al digesto SHA-3.
- */
 export function decryptRsaSignatureDigest(publicKeyPem, signatureBase64) {
   const { n, e, byteLen } = parseRsaPublicKey(publicKeyPem);
   const sigBytes = base64ToBytes(signatureBase64);
   const sBigInt = BigInt('0x' + bytesToHex(sigBytes));
 
-  // Descifrado con clave pública: EM' = S^e mod n
   const mBigInt = modPow(sBigInt, e, n);
   const mHex = mBigInt.toString(16).padStart(byteLen * 2, '0');
 
-  // En PKCS#1 v1.5, el digesto hash (32 bytes = 64 caracteres hex) se encuentra al final
-  const decryptedDigest = mHex.slice(-64).toLowerCase();
-  return decryptedDigest;
+  return mHex.slice(-64).toLowerCase();
 }
 
-/**
- * Compara el digesto SHA-3 del documento (antes de la firma) con el digesto
- * descifrado de la firma digital mediante la clave pública RSA.
- */
 export async function verifySignatureWithDigestComparison(publicKeyPem, content, signatureBase64) {
   if (!content) {
     throw new Error("El contenido del documento a verificar está vacío.");
@@ -397,13 +345,8 @@ export async function verifySignatureWithDigestComparison(publicKeyPem, content,
     throw new Error("Debes proporcionar la firma digital a verificar.");
   }
 
-  // 1. Calcular el digesto SHA-3 del documento hasta antes de la firma
   const calculatedDigest = calculateSha3Hex(content);
-
-  // 2. Descifrar el digesto desde la firma digital con la clave pública
   const decryptedDigest = decryptRsaSignatureDigest(publicKeyPem, signatureBase64);
-
-  // 3. Comparación explícita de digestos
   const isValid = calculatedDigest === decryptedDigest;
 
   return {
@@ -414,11 +357,120 @@ export async function verifySignatureWithDigestComparison(publicKeyPem, content,
   };
 }
 
-/**
- * Función de verificación retrocompatible
- */
 export async function verifySignatureWithRsa(publicKeyPem, data, signatureBase64) {
   const result = await verifySignatureWithDigestComparison(publicKeyPem, data, signatureBase64);
   return result.isValid;
 }
 
+// ==========================================
+// VALIDACIONES Y RAÍCES PRIMITIVAS DIFFIE-HELLMAN
+// ==========================================
+
+/**
+ * Comprueba si un BigInt es primo (Ensayo directo para pequeños / Miller-Rabin para grandes)
+ */
+export function isPrimeBigInt(n, k = 5) {
+  if (n <= 1n) return false;
+  if (n <= 3n) return true;
+  if (n % 2n === 0n || n % 3n === 0n) return false;
+
+  // Optimización para números pequeños (< 10000)
+  if (n < 10000n) {
+    for (let i = 5n; i * i <= n; i += 6n) {
+      if (n % i === 0n || n % (i + 2n) === 0n) return false;
+    }
+    return true;
+  }
+
+  // Miller-Rabin para números grandes
+  let d = n - 1n;
+  let s = 0n;
+  while (d % 2n === 0n) {
+    d /= 2n;
+    s += 1n;
+  }
+
+  const nMinusOne = n - 1n;
+  const range = n - 4n;
+  if (range <= 0n) return true;
+
+  for (let i = 0; i < k; i++) {
+    const a = 2n + (BigInt(Math.floor(Math.random() * 100000)) % range);
+    let x = modPow(a, d, n);
+    if (x === 1n || x === nMinusOne) continue;
+
+    let composite = true;
+    for (let r = 1n; r < s; r++) {
+      x = modPow(x, 2n, n);
+      if (x === nMinusOne) {
+        composite = false;
+        break;
+      }
+    }
+    if (composite) return false;
+  }
+  return true;
+}
+
+function getPrimeFactors(n) {
+  const factors = new Set();
+  let temp = n;
+
+  if (temp % 2n === 0n) {
+    factors.add(2n);
+    while (temp % 2n === 0n) temp /= 2n;
+  }
+
+  for (let i = 3n; i * i <= temp; i += 2n) {
+    if (temp % i === 0n) {
+      factors.add(i);
+      while (temp % i === 0n) temp /= i;
+    }
+  }
+
+  if (temp > 2n) {
+    factors.add(temp);
+  }
+
+  return Array.from(factors);
+}
+
+export function calculateEulerPhi(n) {
+  const nBig = BigInt(n);
+  if (nBig <= 1n) return 0n;
+  return nBig - 1n; // Asumiendo n primo
+}
+
+export function findPrimitiveRoots(n, limit = 50) {
+  const nBig = BigInt(n);
+  if (nBig <= 2n || !isPrimeBigInt(nBig)) return [];
+
+  const phi = nBig - 1n;
+  const factors = getPrimeFactors(phi);
+  const roots = [];
+
+  for (let g = 2n; g < nBig; g++) {
+    let isPrimitive = true;
+    for (const factor of factors) {
+      if (modPow(g, phi / factor, nBig) === 1n) {
+        isPrimitive = false;
+        break;
+      }
+    }
+    if (isPrimitive) {
+      roots.push(g.toString());
+      if (roots.length >= limit) break;
+    }
+  }
+
+  return roots;
+}
+
+export function getBitLength(valueStr) {
+  try {
+    const b = BigInt(valueStr);
+    return b === 0n ? 0 : b.toString(2).length;
+  } catch (e) {
+    return 0;
+  }
+}
