@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  generateRsa4096KeyPair,
   signDataWithRsa,
   verifySignatureWithRsa
 } from '../utils/cryptoUtils';
@@ -40,23 +39,6 @@ export default function RsaSignatureView({ textToSign = '', sourceDescription = 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
-  };
-
-  // Generación de claves RSA 4096
-  const handleGenerateKeys = async () => {
-    setIsGeneratingKeys(true);
-    setSignError('');
-    try {
-      const keys = await generateRsa4096KeyPair();
-      setPrivateKeyPem(keys.privateKeyPem);
-      setPublicKeyPem(keys.publicKeyPem);
-      setVerifyPublicKeyPem(keys.publicKeyPem);
-      showToast('Par de claves RSA 4096 bits generado con éxito.');
-    } catch (err) {
-      setSignError('Error generando par de claves RSA: ' + err.message);
-    } finally {
-      setIsGeneratingKeys(false);
-    }
   };
 
   // Firmar
@@ -178,13 +160,6 @@ export default function RsaSignatureView({ textToSign = '', sourceDescription = 
           onClick={() => setActiveTab('verify')}
         >
           Verificar Firma
-        </button>
-        <button
-          type="button"
-          className={`subtab-btn ${activeTab === 'keys' ? 'active' : ''}`}
-          onClick={() => setActiveTab('keys')}
-        >
-          Generador de Claves RSA
         </button>
       </div>
 

@@ -124,15 +124,6 @@ function base64ToBuffer(base64) {
   return bytes.buffer;
 }
 
-function formatPem(base64, label) {
-  let pem = `-----BEGIN ${label}-----\n`;
-  for (let i = 0; i < base64.length; i += 64) {
-    pem += base64.slice(i, i + 64) + "\n";
-  }
-  pem += `-----END ${label}-----`;
-  return pem;
-}
-
 function cleanPem(pem, label) {
   return pem
     .replace(new RegExp(`-----BEGIN ${label}-----`, "g"), "")
@@ -142,30 +133,6 @@ function cleanPem(pem, label) {
     .replace(/-----BEGIN RSA PUBLIC KEY-----/g, "")
     .replace(/-----END RSA PUBLIC KEY-----/g, "")
     .replace(/\s+/g, "");
-}
-
-/**
- * Genera un par de claves RSA de 4096 bits en formato PEM estándar
- */
-export async function generateRsa4096KeyPair() {
-  const keyPair = await window.crypto.subtle.generateKey(
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      modulusLength: 4096,
-      publicExponent: new Uint8Array([1, 0, 1]), // 65537
-      hash: "SHA-256"
-    },
-    true,
-    ["sign", "verify"]
-  );
-
-  const exportedPrivate = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-  const exportedPublic = await window.crypto.subtle.exportKey("spki", keyPair.publicKey);
-
-  const privateKeyPem = formatPem(bufferToBase64(exportedPrivate), "PRIVATE KEY");
-  const publicKeyPem = formatPem(bufferToBase64(exportedPublic), "PUBLIC KEY");
-
-  return { privateKeyPem, publicKeyPem };
 }
 
 /**
