@@ -100,7 +100,7 @@ function App() {
       {/* Pie de página */}
       <footer className="app-footer">
         <p>
-          Proyecto de Criptografía · Algoritmos: Diffie-Hellman (BigInt), AES-CBC PKCS5 (Spring Boot) y RSA-4096 / SHA-256 (Web Crypto)
+          Proyecto de Criptografía · Algoritmos: Diffie-Hellman (BigInt), AES-CBC PKCS5 (Spring Boot) y RSA-4096 / SHA-3 (SHA3-256)
         </p>
       </footer>
     </div>

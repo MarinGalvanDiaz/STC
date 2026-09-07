@@ -869,3 +869,134 @@
   color: #7A3E3E;
   border: 1.5px solid #A9C1B8;
 }
+
+/* Estilos para Firma Digital con Archivos y Digestos SHA-3 */
+.signature-dropzone {
+  margin-top: 0.5rem;
+  padding: 1.75rem 1.5rem;
+  background-color: #FFFFFF;
+}
+
+.digest-info-banner {
+  background-color: #FFFFFF;
+  border: 1px solid #C6D6D0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.digest-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4A5F57;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.digest-code-sm {
+  font-family: var(--mono, monospace);
+  font-size: 0.85rem;
+  color: #1E2D27;
+  word-break: break-all;
+  background-color: #E2EAE7;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+/* Tarjeta de Comparación de Digestos */
+.digest-comparison-card {
+  margin-top: 1.5rem;
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  border: 2px solid #C6D6D0;
+  overflow: hidden;
+}
+
+.digest-comparison-card.valid {
+  border-color: #8DACA0;
+}
+
+.digest-comparison-card.invalid {
+  border-color: #C27D7D;
+}
+
+.digest-comparison-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background-color: #E2EAE7;
+  border-bottom: 1px solid #C6D6D0;
+}
+
+.digest-comparison-card.valid .card-header {
+  background-color: #E2EAE7;
+}
+
+.digest-comparison-card.invalid .card-header {
+  background-color: #F7EAEB;
+}
+
+.digest-comparison-card h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1E2D27;
+}
+
+.digest-comparison-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.comparison-intro {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #33443D;
+  line-height: 1.4;
+}
+
+.digest-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.digest-block label {
+  font-size: 0.85rem;
+  color: #1E2D27;
+}
+
+.digest-box {
+  background-color: #E2EAE7;
+  border: 1px solid #C6D6D0;
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  font-family: var(--mono, monospace);
+  font-size: 0.88rem;
+  color: #1E2D27;
+  word-break: break-all;
+}
+
+.digest-result-banner {
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background-color: #E2EAE7;
+  border: 1px solid #C6D6D0;
+}
+
+.text-success {
+  color: #1E5C3E;
+  font-weight: 700;
+}
+
+.text-danger {
+  color: #8C2222;
+  font-weight: 700;
+}
+

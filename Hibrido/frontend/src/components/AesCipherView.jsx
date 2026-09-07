@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import RsaSignatureView from './RsaSignatureView';
-import { generateRandomAesKey, generateRandomIv } from '../utils/cryptoUtils';
+import {
+  generateRandomAesKey,
+  generateRandomIv,
+  parseSignedDocument,
+  createSignedDocument
+} from '../utils/cryptoUtils';
 
 export default function AesCipherView({ defaultAesKey = '' }) {
   // Modo de operación: 'encrypt' | 'decrypt'
@@ -22,6 +27,7 @@ export default function AesCipherView({ defaultAesKey = '' }) {
   // Resultado de la última operación
   const [lastResultText, setLastResultText] = useState('');
   const [lastResultType, setLastResultType] = useState(''); // 'Cifrado' | 'Descifrado'
+  const [lastDownloadedFilename, setLastDownloadedFilename] = useState('');
 
   // Manejo de carga de archivo
   const handleFileChange = (e) => {
@@ -29,7 +35,7 @@ export default function AesCipherView({ defaultAesKey = '' }) {
     processSelectedFile(file);
   };
 
-  const processSelectedFile = (file) => {
+  const processSelectedFile = async (file) => {
     setErrorMessage('');
     setSuccessMessage('');
     if (!file) return;
@@ -41,15 +47,14 @@ export default function AesCipherView({ defaultAesKey = '' }) {
 
     setSelectedFile(file);
 
-    // Leer vista previa
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setFilePreview(ev.target.result);
-    };
-    reader.onerror = () => {
-      setFilePreview('No se pudo previsualizar el archivo.');
-    };
-    reader.readAsText(file);
+    // Leer vista previa forzando UTF-8 de forma estricta
+    try {
+      const buffer = await file.arrayBuffer();
+      const text = new TextDecoder('utf-8').decode(buffer);
+      setFilePreview(text);
+    } catch (err) {
+      setFilePreview('No se pudo previsualizar el archivo: ' + err.message);
+    }
   };
 
   // Drag & drop
@@ -84,16 +89,35 @@ export default function AesCipherView({ defaultAesKey = '' }) {
 
     setIsLoading(true);
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('key', key.trim());
-    formData.append('iv', iv.trim());
-
-    const endpoint = operationMode === 'encrypt'
-      ? 'http://localhost:8081/api/crypto/encrypt'
-      : 'http://localhost:8081/api/crypto/decrypt';
-
     try {
+      let fileToSend = selectedFile;
+      let signatureToPreserve = null;
+
+      // Si estamos descifrando, verificar si el archivo contiene firma digital
+      if (operationMode === 'decrypt') {
+        const fileBuffer = await selectedFile.arrayBuffer();
+        const fileText = new TextDecoder('utf-8').decode(fileBuffer);
+        const parsed = parseSignedDocument(fileText);
+        if (parsed.hasSignature) {
+          signatureToPreserve = parsed.signature;
+          // Identificar y excluir la parte de la firma digital del mensaje a descifrar
+          fileToSend = new File(
+            [new TextEncoder().encode(parsed.content)],
+            selectedFile.name,
+            { type: 'text/plain;charset=utf-8' }
+          );
+        }
+      }
+
+      const formData = new FormData();
+      formData.append('file', fileToSend);
+      formData.append('key', key.trim());
+      formData.append('iv', iv.trim());
+
+      const endpoint = operationMode === 'encrypt'
+        ? 'http://localhost:8081/api/crypto/encrypt'
+        : 'http://localhost:8081/api/crypto/decrypt';
+
       const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
@@ -116,15 +140,27 @@ export default function AesCipherView({ defaultAesKey = '' }) {
           filename = matches[1].replace(/['"]/g, '');
         }
       }
+      setLastDownloadedFilename(filename);
 
-      // Obtener el blob y texto resultante
+      // Obtener el buffer y decodificar estrictamente con UTF-8
       const blob = await response.blob();
-      const textResult = await blob.text();
+      const arrayBuffer = await blob.arrayBuffer();
+      let textResult = new TextDecoder('utf-8').decode(arrayBuffer);
+
+      // Si había firma digital en modo descifrado, verificar y dejar la firma al final
+      if (operationMode === 'decrypt' && signatureToPreserve) {
+        const parsedBackend = parseSignedDocument(textResult);
+        if (!parsedBackend.hasSignature) {
+          textResult = createSignedDocument(textResult, signatureToPreserve);
+        }
+      }
+
       setLastResultText(textResult);
       setLastResultType(operationMode === 'encrypt' ? 'Cifrado' : 'Descifrado');
 
-      // Descargar automáticamente el archivo .txt
-      const downloadUrl = window.URL.createObjectURL(blob);
+      // Descargar automáticamente el archivo .txt forzando UTF-8
+      const finalBlob = new Blob([new TextEncoder().encode(textResult)], { type: 'text/plain;charset=utf-8' });
+      const downloadUrl = window.URL.createObjectURL(finalBlob);
       const downloadLink = document.createElement('a');
       downloadLink.href = downloadUrl;
       downloadLink.download = filename;
@@ -133,9 +169,15 @@ export default function AesCipherView({ defaultAesKey = '' }) {
       document.body.removeChild(downloadLink);
       window.URL.revokeObjectURL(downloadUrl);
 
-      setSuccessMessage(
-        `Archivo ${operationMode === 'encrypt' ? 'cifrado' : 'descifrado'} exitosamente. Descargando '${filename}'...`
-      );
+      if (operationMode === 'decrypt' && signatureToPreserve) {
+        setSuccessMessage(
+          `Archivo descifrado exitosamente. Se identificó la firma digital, se descifró el mensaje y se preservó la firma al final de '${filename}'.`
+        );
+      } else {
+        setSuccessMessage(
+          `Archivo ${operationMode === 'encrypt' ? 'cifrado' : 'descifrado'} exitosamente. Descargando '${filename}'...`
+        );
+      }
     } catch (err) {
       setErrorMessage(err.message || 'Error de conexión con el backend (puerto 8081).');
     } finally {
@@ -221,12 +263,22 @@ export default function AesCipherView({ defaultAesKey = '' }) {
             <details>
               <summary>
                 <strong>Vista previa de: {selectedFile?.name}</strong> (primeros 500 caracteres)
+                {operationMode === 'decrypt' && parseSignedDocument(filePreview).hasSignature && (
+                  <span className="badge-notification" style={{ marginLeft: '0.5rem' }}>Firma digital detectada</span>
+                )}
               </summary>
               <pre className="preview-code">
                 {filePreview.slice(0, 500)}
                 {filePreview.length > 500 && '\n... [contenido truncado para vista previa]'}
               </pre>
             </details>
+            {operationMode === 'decrypt' && parseSignedDocument(filePreview).hasSignature && (
+              <div className="info-banner" style={{ marginTop: '0.5rem' }}>
+                <span>
+                  ✓ <strong>Firma digital detectada en el archivo:</strong> Al procesar, se excluirá la firma digital para descifrar el criptograma y se preservará la firma al final del archivo resultante.
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -341,7 +393,31 @@ export default function AesCipherView({ defaultAesKey = '' }) {
 
       {/* SEGUNDA PARTE: FIRMA DIGITAL Y VERIFICACIÓN RSA 4096 BITS */}
       <RsaSignatureView
-        textToSign={lastResultText || filePreview}
+        plainTextData={
+          operationMode === 'encrypt' && (filePreview || selectedFile)
+            ? {
+                file: selectedFile,
+                content: filePreview,
+                fileName: selectedFile?.name || 'texto_plano.txt',
+              }
+            : null
+        }
+        cipherTextData={
+          operationMode === 'encrypt' && lastResultText
+            ? {
+                content: lastResultText,
+                fileName: lastDownloadedFilename || (selectedFile ? `cifrado_${selectedFile.name}` : 'archivo_cifrado.txt'),
+              }
+            : null
+        }
+        decryptedResultData={
+          operationMode === 'decrypt' && lastResultText
+            ? {
+                content: lastResultText,
+                fileName: lastDownloadedFilename || (selectedFile ? `descifrado_${selectedFile.name}` : 'archivo_descifrado.txt'),
+              }
+            : null
+        }
         sourceDescription={
           lastResultText
             ? `Resultado ${lastResultType} (${selectedFile?.name || 'archivo.txt'})`

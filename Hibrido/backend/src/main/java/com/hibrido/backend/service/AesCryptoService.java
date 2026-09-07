@@ -62,18 +62,38 @@ public class AesCryptoService {
             throw new IllegalArgumentException("El archivo a descifrar está vacío.");
         }
 
+        String contentStr = new String(fileBytes, StandardCharsets.UTF_8);
+        String signaturePart = null;
+        byte[] payloadToDecrypt = fileBytes;
+
+        // Detectar si contiene la sección "Firma digital"
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?:\r?\n)Firma digital\r?\n([\\s\\S]*)$", java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher matcher = pattern.matcher(contentStr);
+        if (matcher.find()) {
+            String cipherPart = contentStr.substring(0, matcher.start());
+            signaturePart = matcher.group(1).trim();
+            payloadToDecrypt = cipherPart.getBytes(StandardCharsets.UTF_8);
+        } else {
+            java.util.regex.Pattern patternStart = java.util.regex.Pattern.compile("^Firma digital\r?\n([\\s\\S]*)$", java.util.regex.Pattern.CASE_INSENSITIVE);
+            java.util.regex.Matcher matcherStart = patternStart.matcher(contentStr);
+            if (matcherStart.find()) {
+                signaturePart = matcherStart.group(1).trim();
+                payloadToDecrypt = new byte[0];
+            }
+        }
+
         byte[] keyBytes = parseKey(keyInput);
         byte[] ivBytes = parseIv(ivInput);
 
         // Detectar si el contenido es Base64
         byte[] cipherBytes;
-        String contentStr = new String(fileBytes, StandardCharsets.UTF_8).trim();
+        String cleanCipherStr = new String(payloadToDecrypt, StandardCharsets.UTF_8).trim();
         try {
             // Intentar decodificar como Base64 (el formato estándar generado por encrypt)
-            cipherBytes = Base64.getDecoder().decode(contentStr);
+            cipherBytes = Base64.getDecoder().decode(cleanCipherStr);
         } catch (IllegalArgumentException e) {
             // Si no es Base64 válido, se asumen los bytes crudos
-            cipherBytes = fileBytes;
+            cipherBytes = payloadToDecrypt;
         }
 
         try {
@@ -82,7 +102,15 @@ public class AesCryptoService {
             IvParameterSpec ivParameterSpec = new IvParameterSpec(ivBytes);
 
             cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec);
-            return cipher.doFinal(cipherBytes);
+            byte[] decrypted = cipher.doFinal(cipherBytes);
+
+            if (signaturePart != null && !signaturePart.isEmpty()) {
+                String decryptedText = new String(decrypted, StandardCharsets.UTF_8);
+                String newline = decryptedText.contains("\r\n") ? "\r\n" : "\n";
+                String resultWithSig = decryptedText + newline + "Firma digital" + newline + signaturePart;
+                return resultWithSig.getBytes(StandardCharsets.UTF_8);
+            }
+            return decrypted;
         } catch (BadPaddingException e) {
             throw new IllegalArgumentException("Error al descifrar: La clave o el vector inicial (IV) son incorrectos, o el archivo no fue cifrado con AES-CBC PKCS5.");
         } catch (IllegalBlockSizeException e) {

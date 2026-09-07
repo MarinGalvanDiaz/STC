@@ -65,7 +65,7 @@ public class CryptoController {
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadFilename + "\"")
-                    .contentType(MediaType.TEXT_PLAIN)
+                    .contentType(new MediaType("text", "plain", StandardCharsets.UTF_8))
                     .body(encryptedBytes);
 
         } catch (IllegalArgumentException e) {
@@ -110,7 +110,7 @@ public class CryptoController {
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadFilename + "\"")
-                    .contentType(MediaType.TEXT_PLAIN)
+                    .contentType(new MediaType("text", "plain", StandardCharsets.UTF_8))
                     .body(decryptedBytes);
 
         } catch (IllegalArgumentException e) {
