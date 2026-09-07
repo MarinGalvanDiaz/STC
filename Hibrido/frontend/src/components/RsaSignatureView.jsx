@@ -189,7 +189,7 @@ export default function RsaSignatureView({
       return;
     }
     if (!privateKeyPem.trim()) {
-      setSignError('Por favor pega tu Clave Privada RSA (4096 bits) en formato PEM.');
+      setSignError('Por favor pega tu Clave Privada RSA.');
       return;
     }
 
@@ -317,7 +317,7 @@ export default function RsaSignatureView({
       return;
     }
     if (!verifyPublicKeyPem.trim()) {
-      setVerifyError('Debes ingresar la Clave Pública RSA del firmante (en formato PEM).');
+      setVerifyError('Debes ingresar la Clave Pública RSA del firmante.');
       return;
     }
     if (!verifySignatureInput.trim()) {
@@ -367,7 +367,7 @@ export default function RsaSignatureView({
           className={`subtab-btn ${activeTab === 'sign' ? 'active' : ''}`}
           onClick={() => setActiveTab('sign')}
         >
-          Firmar Archivo (Doble Selector)
+          Firmar Archivo
         </button>
         <button
           type="button"
@@ -509,7 +509,7 @@ export default function RsaSignatureView({
           <div className="form-group" style={{ marginTop: '1rem' }}>
             <div className="label-with-action">
               <label htmlFor="rsa-priv-key">
-                <strong>Clave Privada RSA (PEM):</strong>
+                <strong>Clave Privada RSA :</strong>
                 <small className="help-text">Utilizada para firmar el digesto SHA-3 del texto plano con RSA-4096</small>
               </label>
               <div className="actions-inline">
@@ -529,7 +529,7 @@ export default function RsaSignatureView({
               rows={5}
               value={privateKeyPem}
               onChange={(e) => setPrivateKeyPem(e.target.value)}
-              placeholder="-----BEGIN PRIVATE KEY-----&#10;Pega aquí tu clave privada RSA (4096 bits) en formato PEM...&#10;-----END PRIVATE KEY-----"
+              placeholder="-----Pega aquí tu clave privada RSA-----"
               className="code-textarea"
             />
           </div>
@@ -682,7 +682,7 @@ export default function RsaSignatureView({
             {/* Clave Pública RSA */}
             <div className="form-group">
               <label htmlFor="rsa-pub-key">
-                <strong>Clave Pública RSA (PEM):</strong>
+                <strong>Clave Pública RSA:</strong>
                 <small className="help-text">Clave pública del firmante para descifrar la firma</small>
               </label>
               <textarea
@@ -693,7 +693,7 @@ export default function RsaSignatureView({
                   setVerifyPublicKeyPem(e.target.value);
                   setVerificationResult(null);
                 }}
-                placeholder="-----BEGIN PUBLIC KEY-----&#10;Pega aquí la clave pública RSA (4096 bits) en formato PEM...&#10;-----END PUBLIC KEY-----"
+                placeholder="-----Pega aquí la clave pública RSA-----"
                 className="code-textarea"
               />
             </div>
