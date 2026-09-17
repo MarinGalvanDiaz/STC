@@ -1,0 +1,161 @@
+.full-container {
+  width: 100vw;
+  min-height: 100vh;
+  background-color: #232941; /* WHALE BLUE */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.card-box {
+  width: 100%;
+  max-width: 850px;
+  background-color: #1a1e30;
+  border: 2px solid #295651; /* DEEP PINE */
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.main-title {
+  color: #97BAA4; /* SUMMER GREEN */
+  font-size: 2.2rem;
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.step-title {
+  color: #499360; /* JADE */
+  font-size: 1.3rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.formula-card {
+  background-color: #295651; /* DEEP PINE */
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.math-display {
+  font-family: 'Times New Roman', serif;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #97BAA4; /* SUMMER GREEN */
+}
+
+.equation-builder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-bottom: 1.8rem;
+  background-color: #232941;
+  padding: 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #295651;
+}
+
+.eq-text {
+  font-family: 'Times New Roman', serif;
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #f0f4f2;
+}
+
+.custom-select {
+  background-color: #295651;
+  color: #97BAA4;
+  border: 1px solid #499360;
+  padding: 0.5rem 0.8rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.custom-input {
+  width: 80px;
+  background-color: #1a1e30;
+  border: 2px solid #499360; /* JADE */
+  color: #ffffff;
+  padding: 0.5rem;
+  font-size: 1.1rem;
+  text-align: center;
+  border-radius: 6px;
+  outline: none;
+}
+
+.custom-input:focus {
+  border-color: #97BAA4;
+  box-shadow: 0 0 8px rgba(151, 186, 164, 0.4);
+}
+
+.verify-btn {
+  width: 100%;
+  background-color: #499360; /* JADE */
+  color: #ffffff;
+  border: none;
+  padding: 0.9rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.verify-btn:hover {
+  background-color: #97BAA4;
+  color: #232941;
+}
+
+.results-panel {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #295651;
+}
+
+.section-sub {
+  color: #97BAA4;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.delta-val {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #499360;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.status-banner {
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.status-banner.success {
+  background-color: #14382c; /* Verde oscuro */
+  color: #a3e635;            /* Texto verde claro */
+  border: 1px solid #2d6a4f;
+}
+
+.status-banner.danger {
+  background-color: #4a1525; /* Rojo oscuro */
+  color: #ff8585;            /* Texto rojo claro */
+  border: 1px solid #852237;
+}
+
+.error-msg {
+  color: #ff8585;
+  text-align: center;
+  margin-bottom: 1rem;
+}
