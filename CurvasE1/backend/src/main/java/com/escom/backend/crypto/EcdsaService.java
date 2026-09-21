@@ -29,6 +29,8 @@ public class EcdsaService {
         requireText(message, "El mensaje es obligatorio.");
 
         Signature signer = Signature.getInstance(ALGORITHM);
+        System.out.println(signer.getProvider());
+        System.out.println(signer.getProvider().getInfo());
         signer.initSign(keyPair.getPrivate());
         signer.update(message.getBytes(StandardCharsets.UTF_8));
 

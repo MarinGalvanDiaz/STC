@@ -2,6 +2,8 @@ package com.example.back.controller;
 
 import com.example.back.dto.VerificationRequest;
 import com.example.back.dto.VerificationResponse;
+import com.example.back.dto.PointOperationRequest;
+import com.example.back.dto.PointOperationResponse;
 import com.example.back.service.EllipticCurveService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -17,5 +19,10 @@ public class EllipticCurveController {
     @PostMapping("/verify")
     public VerificationResponse verifyCurve(@RequestBody VerificationRequest request) {
         return curveService.verifyNonSingularity(request);
+    }
+
+    @PostMapping("/points")
+    public PointOperationResponse calculatePointOperation(@RequestBody PointOperationRequest request) {
+        return curveService.calculatePointOperation(request);
     }
 }

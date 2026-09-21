@@ -9,11 +9,29 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pointOperation, setPointOperation] = useState('DOUBLE');
+  const [pointA, setPointA] = useState('');
+  const [pointB, setPointB] = useState('');
+  const [pointN, setPointN] = useState('');
+  const [x1, setX1] = useState('');
+  const [y1, setY1] = useState('');
+  const [x2, setX2] = useState('');
+  const [y2, setY2] = useState('');
+  const [pointResult, setPointResult] = useState(null);
+  const [pointLoading, setPointLoading] = useState(false);
+  const [pointError, setPointError] = useState('');
 
   // Garantiza que los inputs solo acepten dígitos numéricos
   const handleNumberInput = (setter) => (e) => {
     const val = e.target.value;
     if (val === '' || /^\d+$/.test(val)) {
+      setter(val);
+    }
+  };
+
+  const handleSignedNumberInput = (setter) => (e) => {
+    const val = e.target.value;
+    if (val === '' || val === '-' || /^-?\d+$/.test(val)) {
       setter(val);
     }
   };
@@ -49,6 +67,54 @@ function App() {
       setError(err.message || 'Error en la verificación.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePointOperation = async () => {
+    const requiredValues = [pointA, pointB, pointN, x1, y1];
+    if (pointOperation === 'SUM') {
+      requiredValues.push(x2, y2);
+    }
+    if (requiredValues.some((value) => !value || value === '-' || isNaN(parseInt(value, 10)))) {
+      setPointError('Completa todos los valores necesarios con números válidos.');
+      return;
+    }
+    if (parseInt(pointN, 10) <= 1) {
+      setPointError('El módulo n debe ser mayor que 1.');
+      return;
+    }
+
+    setPointError('');
+    setPointLoading(true);
+    setPointResult(null);
+
+    const request = {
+      operation: pointOperation,
+      a: parseInt(pointA, 10),
+      b: parseInt(pointB, 10),
+      n: parseInt(pointN, 10),
+      p: { x: parseInt(x1, 10), y: parseInt(y1, 10) },
+      q: pointOperation === 'SUM'
+        ? { x: parseInt(x2, 10), y: parseInt(y2, 10) }
+        : null
+    };
+
+    try {
+      const response = await fetch('http://localhost:8080/api/elliptic/points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'No se pudo calcular la operación.');
+      }
+      setPointResult(await response.json());
+    } catch (err) {
+      setPointError(err.message || 'Error al calcular los puntos.');
+    } finally {
+      setPointLoading(false);
     }
   };
 
@@ -133,6 +199,97 @@ function App() {
                     {result.message}
                   </div>
                 </div>
+            )}
+          </div>
+
+          <div className="step-container point-operations">
+            <h2 className="step-title">Suma y doblado de puntos</h2>
+
+            <div className="formula-card">
+              <span className="math-display">y² ≡ x³ + ax + b mod n</span>
+            </div>
+
+            <div className="operation-toolbar">
+              <label htmlFor="point-operation">Operación</label>
+              <select
+                id="point-operation"
+                value={pointOperation}
+                onChange={(e) => {
+                  setPointOperation(e.target.value);
+                  setPointResult(null);
+                  setPointError('');
+                }}
+                className="custom-select"
+              >
+                <option value="DOUBLE">Doblar punto (2P)</option>
+                <option value="SUM">Sumar puntos (P + Q)</option>
+              </select>
+            </div>
+
+            <div className="point-grid">
+              <label>
+                <span>Coeficiente a</span>
+                <input className="custom-input" type="text"
+                  placeholder="a" value={pointA} onChange={handleSignedNumberInput(setPointA)} />
+              </label>
+              <label>
+                <span>Coeficiente b</span>
+                <input className="custom-input" type="text"
+                  placeholder="b" value={pointB} onChange={handleSignedNumberInput(setPointB)} />
+              </label>
+              <label>
+                <span>Módulo n</span>
+                <input className="custom-input" type="text" inputMode="numeric"
+                  placeholder="n" value={pointN} onChange={handleNumberInput(setPointN)} />
+              </label>
+            </div>
+
+            <div className="point-inputs">
+              <div className="point-card">
+                <h3 className="section-sub">Punto P</h3>
+                <div className="coordinate-row">
+                  <input className="custom-input" type="text"
+                    placeholder="x₁" value={x1} onChange={handleSignedNumberInput(setX1)} />
+                  <input className="custom-input" type="text"
+                    placeholder="y₁" value={y1} onChange={handleSignedNumberInput(setY1)} />
+                </div>
+              </div>
+
+              {pointOperation === 'SUM' && (
+                <div className="point-card">
+                  <h3 className="section-sub">Punto Q</h3>
+                  <div className="coordinate-row">
+                    <input className="custom-input" type="text"
+                      placeholder="x₂" value={x2} onChange={handleSignedNumberInput(setX2)} />
+                    <input className="custom-input" type="text"
+                      placeholder="y₂" value={y2} onChange={handleSignedNumberInput(setY2)} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {pointError && <p className="error-msg">{pointError}</p>}
+
+            <button
+              onClick={handlePointOperation}
+              disabled={pointLoading}
+              className="verify-btn"
+            >
+              {pointLoading ? 'Calculando...' : 'Calcular operación'}
+            </button>
+
+            {pointResult && (
+              <div className="results-panel">
+                <h3 className="section-sub">Resultado</h3>
+                <div className="point-result">
+                  {pointResult.result.infinity
+                    ? 'Punto al infinito (∞)'
+                    : `(${pointResult.result.x}, ${pointResult.result.y})`}
+                </div>
+                <div className="formula-card">
+                  <span className="math-display">{pointResult.formula}</span>
+                </div>
+              </div>
             )}
           </div>
         </div>
