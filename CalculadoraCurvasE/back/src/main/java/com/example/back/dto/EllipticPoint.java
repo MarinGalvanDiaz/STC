@@ -1,8 +1,10 @@
 package com.example.back.dto;
 
 import java.math.BigInteger;
+import java.util.Objects;
 
 public class EllipticPoint {
+
     private BigInteger x;
     private BigInteger y;
     private boolean infinity;
@@ -44,5 +46,29 @@ public class EllipticPoint {
 
     public void setInfinity(boolean infinity) {
         this.infinity = infinity;
+    }
+
+    public String getLabel() {
+        return infinity ? "O" : "(" + x + ", " + y + ")";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        EllipticPoint that = (EllipticPoint) o;
+        if (infinity && that.infinity) return true;
+        if (infinity != that.infinity) return false;
+        return Objects.equals(x, that.x) && Objects.equals(y, that.y);
+    }
+
+    @Override
+    public int hashCode() {
+        return infinity ? Objects.hash(true) : Objects.hash(false, x, y);
+    }
+
+    @Override
+    public String toString() {
+        return getLabel();
     }
 }

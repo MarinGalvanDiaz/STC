@@ -3,12 +3,14 @@ package com.example.back.dto;
 import java.math.BigInteger;
 
 public class PointOperationRequest {
-    private String operation;
+
+    private String operation; // "SUM", "DOUBLE", "SCALAR"
     private BigInteger a;
     private BigInteger b;
-    private BigInteger n;
+    private BigInteger n; // Módulo p
     private EllipticPoint p;
     private EllipticPoint q;
+    private BigInteger k; // Escalar para k * P
 
     public String getOperation() {
         return operation;
@@ -56,5 +58,13 @@ public class PointOperationRequest {
 
     public void setQ(EllipticPoint q) {
         this.q = q;
+    }
+
+    public BigInteger getK() {
+        return k;
+    }
+
+    public void setK(BigInteger k) {
+        this.k = k;
     }
 }
