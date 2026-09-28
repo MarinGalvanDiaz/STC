@@ -4,13 +4,13 @@
   background-color: #232941; /* WHALE BLUE */
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   padding: 2rem;
 }
 
 .card-box {
   width: 100%;
-  max-width: 850px;
+  max-width: 1100px;
   background-color: #1a1e30;
   border: 2px solid #295651; /* DEEP PINE */
   border-radius: 12px;
@@ -28,9 +28,15 @@
 
 .step-title {
   color: #499360; /* JADE */
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   text-align: center;
   margin-bottom: 1.5rem;
+}
+
+.section-divider {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 2px solid #295651;
 }
 
 .formula-card {
@@ -73,14 +79,21 @@
   color: #97BAA4;
   border: 1px solid #499360;
   padding: 0.5rem 0.8rem;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: bold;
   border-radius: 6px;
   cursor: pointer;
 }
 
+.point-picker {
+  font-size: 0.95rem;
+  padding: 0.35rem 0.6rem;
+  margin-bottom: 0.4rem;
+  width: 100%;
+}
+
 .custom-input {
-  width: 80px;
+  width: 85px;
   background-color: #1a1e30;
   border: 2px solid #499360; /* JADE */
   color: #ffffff;
@@ -114,6 +127,11 @@
   color: #232941;
 }
 
+.verify-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .results-panel {
   margin-top: 2rem;
   padding-top: 1.5rem;
@@ -123,7 +141,7 @@
 .section-sub {
   color: #97BAA4;
   font-size: 1.1rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
 }
 
 .delta-val {
@@ -143,14 +161,14 @@
 }
 
 .status-banner.success {
-  background-color: #14382c; /* Verde oscuro */
-  color: #a3e635;            /* Texto verde claro */
+  background-color: #14382c;
+  color: #a3e635;
   border: 1px solid #2d6a4f;
 }
 
 .status-banner.danger {
-  background-color: #4a1525; /* Rojo oscuro */
-  color: #ff8585;            /* Texto rojo claro */
+  background-color: #4a1525;
+  color: #ff8585;
   border: 1px solid #852237;
 }
 
@@ -158,14 +176,86 @@
   color: #ff8585;
   text-align: center;
   margin-bottom: 1rem;
+  font-weight: bold;
 }
 
-.point-operations {
-  margin-top: 2.5rem;
-  padding-top: 2rem;
-  border-top: 2px solid #295651;
+.empty-msg {
+  color: #97BAA4;
+  font-style: italic;
+  text-align: center;
 }
 
+/* Estadísticas de cardinalidad */
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.8rem;
+}
+
+.stat-box {
+  flex: 1;
+  min-width: 180px;
+  background-color: #232941;
+  border: 1px solid #499360;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.stat-label {
+  color: #97BAA4;
+  font-size: 0.95rem;
+  font-weight: bold;
+}
+
+.stat-value {
+  color: #a3e635;
+  font-size: 1.6rem;
+  font-weight: bold;
+}
+
+/* Contenedor de badges de puntos y generadores */
+.points-badge-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  background-color: #232941;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #295651;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.point-badge {
+  background-color: #1a1e30;
+  border: 1px solid #499360;
+  color: #f0f4f2;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.95rem;
+}
+
+.infinity-badge {
+  background-color: #295651;
+  color: #a3e635;
+  font-weight: bold;
+}
+
+.generator-badge {
+  background-color: #14382c;
+  border-color: #a3e635;
+  color: #a3e635;
+  font-weight: bold;
+}
+
+/* Operaciones de puntos */
 .operation-toolbar {
   display: flex;
   align-items: center;
@@ -204,10 +294,11 @@
   border: 1px solid #295651;
   border-radius: 8px;
   padding: 1rem;
+  min-width: 210px;
 }
 
 .point-card .section-sub {
-  margin: 0;
+  margin: 0 0 0.3rem 0;
 }
 
 .coordinate-row {
@@ -216,11 +307,98 @@
 }
 
 .point-result {
-  color: #499360;
-  font-size: 1.5rem;
+  color: #a3e635;
+  font-size: 1.6rem;
   font-weight: bold;
   text-align: center;
   margin-bottom: 1rem;
+}
+
+/* Pestañas y Tablas */
+.tabs-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.tab-btn {
+  background-color: #232941;
+  color: #97BAA4;
+  border: 1px solid #295651;
+  padding: 0.6rem 1.1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.tab-btn.active,
+.tab-btn:hover {
+  background-color: #499360;
+  color: #ffffff;
+  border-color: #97BAA4;
+}
+
+.table-responsive {
+  width: 100%;
+  max-height: 460px;
+  overflow: auto;
+  border: 1px solid #295651;
+  border-radius: 8px;
+  background-color: #232941;
+}
+
+.crypto-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.crypto-table th,
+.crypto-table td {
+  border: 1px solid #295651;
+  padding: 0.55rem 0.7rem;
+  white-space: nowrap;
+}
+
+.crypto-table thead th {
+  background-color: #295651;
+  color: #97BAA4;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.crypto-table .row-header {
+  background-color: #1f3a3d;
+  color: #97BAA4;
+  font-weight: bold;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.cell-infinity {
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+.generator-row {
+  background-color: rgba(20, 56, 44, 0.55);
+}
+
+.order-cell {
+  font-weight: bold;
+  color: #97BAA4;
+}
+
+.gen-status-cell {
+  font-weight: bold;
+  color: #a3e635;
 }
 
 @media (max-width: 600px) {
