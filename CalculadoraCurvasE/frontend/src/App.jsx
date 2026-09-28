@@ -247,17 +247,17 @@ function App() {
                 disabled={loading}
                 className="verify-btn"
             >
-              {loading ? 'Validando y calculando...' : 'Validar Curva y Calcular Propiedades'}
+              {loading ? 'Validando y calculando...' : 'Validar curva y calcular propiedades'}
             </button>
 
             {result && (
                 <div className="results-panel">
-                  <h3 className="section-sub">Fórmula con Valores Sustituidos:</h3>
+                  <h3 className="section-sub">Fórmula con valores sustituidos:</h3>
                   <div className="formula-card">
                     <span className="math-display">{result.substitutedFormula}</span>
                   </div>
 
-                  <h3 className="section-sub">Resultado del Discriminante:</h3>
+                  <h3 className="section-sub">Resultado del discriminante:</h3>
                   <p className="delta-val">Δ = {result.deltaValue}</p>
 
                   <div className={`status-banner ${isCurveValid ? 'success' : 'danger'}`}>
@@ -272,7 +272,7 @@ function App() {
               <>
                 {/* 3.a y 3.b: PUNTOS DE LA CURVA Y CARDINALIDAD */}
                 <div className="step-container section-divider">
-                  <h2 className="step-title">2. Puntos y Cardinalidad de la Curva</h2>
+                  <h2 className="step-title">2. Puntos y cardinalidad de la curva</h2>
 
                   <div className="stats-row">
                     <div className="stat-box">
@@ -305,7 +305,7 @@ function App() {
 
                   {/* 3.f: PUNTOS GENERADORES */}
                   <h3 className="section-sub" style={{ marginTop: '1.5rem' }}>
-                    f) Puntos Generadores de la Curva (Orden = {result.cardinality}):
+                    b) Puntos generadores de la curva (Orden = {result.cardinality}):
                   </h3>
                   {result.generators && result.generators.length > 0 ? (
                       <div className="points-badge-container">
@@ -325,7 +325,7 @@ function App() {
                 {/* 3.c: OPERACIONES DE PUNTOS (SUMA, DOBLADO Y MULTIPLICACIÓN ESCALAR) */}
                 <div className="step-container section-divider">
                   <h2 className="step-title">
-                    3. Operaciones de Puntos (Suma, Doblado y Multiplicación Escalar)
+                    3. Operaciones de puntos (Suma, Doblado y Multiplicación Escalar)
                   </h2>
 
                   <div className="operation-toolbar">
@@ -481,12 +481,12 @@ function App() {
                       disabled={pointLoading}
                       className="verify-btn"
                   >
-                    {pointLoading ? 'Calculando...' : 'Calcular Operación'}
+                    {pointLoading ? 'Calculando...' : 'Calcular operación'}
                   </button>
 
                   {pointResult && (
                       <div className="results-panel">
-                        <h3 className="section-sub">Resultado de la Operación:</h3>
+                        <h3 className="section-sub">Resultado de la operación:</h3>
                         <div className="point-result">
                           {pointResult.result.infinity
                               ? 'Punto al infinito (O)'
@@ -501,33 +501,33 @@ function App() {
 
                 {/* 3.d y 3.e: TABLAS DE SUMA Y MULTIPLICACIÓN ESCALAR */}
                 <div className="step-container section-divider">
-                  <h2 className="step-title">4. Tablas de Operaciones de la Curva</h2>
+                  <h2 className="step-title">4. Tablas de operaciones de la curva</h2>
 
                   <div className="tabs-bar">
                     <button
                         className={`tab-btn ${activeTab === 'ALL' || activeTab === 'ADD' ? 'active' : ''}`}
                         onClick={() => setActiveTab('ADD')}
                     >
-                      d) Tabla de Suma (P + Q)
+                      a) Tabla de suma (P + Q)
                     </button>
                     <button
                         className={`tab-btn ${activeTab === 'SCALAR' ? 'active' : ''}`}
                         onClick={() => setActiveTab('SCALAR')}
                     >
-                      e) Tabla de Multiplicación Escalar (kP)
+                      b) Tabla de multiplicación escalar (kP)
                     </button>
                     <button
                         className={`tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
                         onClick={() => setActiveTab('ALL')}
                     >
-                      Mostrar Ambas
+                      Mostrar ambas
                     </button>
                   </div>
 
                   {/* 3.d: TABLA DE SUMA DE PUNTOS */}
                   {(activeTab === 'ALL' || activeTab === 'ADD') && (
                       <div className="table-section">
-                        <h3 className="section-sub">d) Tabla de Suma de Puntos (P + Q):</h3>
+                        <h3 className="section-sub">a) Tabla de suma de puntos (P + Q):</h3>
                         <div className="table-responsive">
                           <table className="crypto-table">
                             <thead>
@@ -562,7 +562,7 @@ function App() {
                   {(activeTab === 'ALL' || activeTab === 'SCALAR') && (
                       <div className="table-section" style={{ marginTop: '2rem' }}>
                         <h3 className="section-sub">
-                          e) Tabla de Multiplicación Escalar (kP) e Identificación de Generadores:
+                          b) Tabla de multiplicación escalar (kP) e identificación de generadores:
                         </h3>
                         <div className="table-responsive">
                           <table className="crypto-table">
