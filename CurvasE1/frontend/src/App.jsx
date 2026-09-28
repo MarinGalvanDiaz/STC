@@ -87,7 +87,7 @@ function App() {
   return (
     <main className="app-shell">
       <header className="hero">
-        <span className="eyebrow">Laboratorio de criptografía</span>
+        <span className="eyebrow">STC</span>
         <h1>Firma digital de <span>archivos TXT</span></h1>
         <p>La firma se agrega al final del archivo y se valida con las claves generadas por el backend.</p>
       </header>

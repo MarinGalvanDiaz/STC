@@ -511,7 +511,7 @@ function App() {
                       a) Tabla de suma (P + Q)
                     </button>
                     <button
-                        className={`tab-btn ${activeTab === 'SCALAR' ? 'active' : ''}`}
+                        className={`tab-btn ${activeTab === 'ALL' || activeTab === 'SCALAR'? 'active' : ''}`}
                         onClick={() => setActiveTab('SCALAR')}
                     >
                       b) Tabla de multiplicación escalar (kP)
