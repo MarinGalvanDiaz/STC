@@ -340,18 +340,22 @@ http://localhost:5173
 
 ## 8. Funcionalidades de la Calculadora Criptográfica
 
-El sistema se enfoca exclusivamente en la funcionalidad de **Calculadora Criptográfica ECDH**:
+El sistema se estructura en tres secciones claras para modelar el protocolo paso a paso:
 1. **Selector de Curva Recomendada NIST:**
    - Permite seleccionar entre las curvas oficiales NIST (**P-256**, **P-384** y **P-521**).
 2. **Paso 1: Generación de Mi Par de Claves:**
    - Botón *"🔑 Generar Mi Par de Claves"*.
    - Genera el escalar secreto privado $d$ (con opción de ver/ocultar) y el punto público $Q = d \cdot G$ (coordenadas $X$ e $Y$).
-   - Muestra de forma inmediata el **tiempo de generación en milisegundos y nanosegundos**.
-   - Botones para copiar la clave pública o descargarla en formato de archivo para transporte en USB.
-3. **Paso 2: Calcular con la Clave Pública de Otro:**
-   - Campo para ingresar/pegar o cargar desde archivo la clave pública del otro participante (o clave intermedia en intercambios tripartitos).
-   - Botón *"⚡ Calcular Clave Compartida"*.
-   - Calcula el punto resultante $S = d \cdot Q_{\text{otro}}$ y deriva la clave simétrica final mediante **KDF SHA-256**.
-   - Muestra el **tiempo de cálculo del secreto en milisegundos y nanosegundos**.
-4. **Documentación del Reporte:**
+   - Muestra el **tiempo de generación en milisegundos y nanosegundos**.
+   - Permite copiar la clave pública o descargarla en archivo `.json` para transporte en memoria USB.
+3. **Paso 2: Calcular Clave Intermedia (Ronda 2):**
+   - Campo para ingresar/pegar o cargar de USB la clave pública del participante previo ($P_{\text{previo}}$).
+   - Botón *"⚡ Calcular Clave Intermedia (Z = d · P_previo)"*.
+   - Muestra el punto intermedio $Z$ (coordenadas $X$ e $Y$, y formato hexadecimal completo), el **tiempo de cómputo intermedio** y la opción de descargarlo en archivo `.json` para pasarlo al siguiente participante por USB.
+4. **Paso 3: Calcular Clave Final Compartida (Ronda 3):**
+   - Campo para ingresar/pegar o cargar de USB la clave intermedia recibida del otro participante ($Z_{\text{recibido}}$).
+   - Botón *"🛡️ Calcular Clave Final Compartida (K = d · Z_recibido)"*.
+   - Calcula el punto final común $(abc)G$ y deriva la clave simétrica común mediante **KDF SHA-256** (256 bits).
+   - Muestra el **tiempo de cómputo final en milisegundos y nanosegundos**.
+5. **Documentación del Reporte:**
    - Toda la información teórica, diagramas de 3 participantes, justificaciones normativas, tablas comparativas de nivel de seguridad y respuestas a las preguntas individuales de la Página 2 se conservan de forma exhaustiva en este documento `README.md` para la redacción del reporte.

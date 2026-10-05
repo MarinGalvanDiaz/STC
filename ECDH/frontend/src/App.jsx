@@ -6,16 +6,22 @@ export default function App() {
   const [curves, setCurves] = useState([]);
   const [selectedCurve, setSelectedCurve] = useState('P-256');
 
-  // Estado del Par de Claves Local
+  // Estado del Par de Claves Local (Paso 1)
   const [myKeyPair, setMyKeyPair] = useState(null);
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [loadingGen, setLoadingGen] = useState(false);
 
-  // Estado del Cálculo Compartido
+  // Estado de la Clave Intermedia (Paso 2)
   const [peerPublicKey, setPeerPublicKey] = useState('');
-  const [calculationResult, setCalculationResult] = useState(null);
-  const [loadingCalc, setLoadingCalc] = useState(false);
-  const [calcError, setCalcError] = useState(null);
+  const [intermediateResult, setIntermediateResult] = useState(null);
+  const [loadingIntermediate, setLoadingIntermediate] = useState(false);
+  const [intermediateError, setIntermediateError] = useState(null);
+
+  // Estado de la Clave Final (Paso 3)
+  const [peerIntermediateKey, setPeerIntermediateKey] = useState('');
+  const [finalResult, setFinalResult] = useState(null);
+  const [loadingFinal, setLoadingFinal] = useState(false);
+  const [finalError, setFinalError] = useState(null);
 
   // Notificación de copiado
   const [copiedLabel, setCopiedLabel] = useState(null);
@@ -31,10 +37,13 @@ export default function App() {
       .catch((err) => console.error('Error cargando curvas:', err));
   }, []);
 
+  // Generar Par de Claves
   const handleGenerateKeys = async () => {
     setLoadingGen(true);
-    setCalculationResult(null);
-    setCalcError(null);
+    setIntermediateResult(null);
+    setFinalResult(null);
+    setIntermediateError(null);
+    setFinalError(null);
     try {
       const kp = await generateKey(selectedCurve, 'Usuario');
       setMyKeyPair(kp);
@@ -45,30 +54,59 @@ export default function App() {
     }
   };
 
-  const handleCalculateShared = async () => {
+  // Calcular Clave Intermedia
+  const handleCalculateIntermediate = async () => {
     if (!myKeyPair) {
       alert('Primero genera tu par de claves en el Paso 1.');
       return;
     }
     if (!peerPublicKey.trim()) {
-      alert('Por favor ingresa la clave pública del otro participante.');
+      alert('Por favor ingresa la clave pública recibida del participante previo.');
       return;
     }
 
-    setLoadingCalc(true);
-    setCalcError(null);
-    setCalculationResult(null);
+    setLoadingIntermediate(true);
+    setIntermediateError(null);
+    setIntermediateResult(null);
     try {
       const res = await calculateSharedKey(
         selectedCurve,
         myKeyPair.privateKeyHex,
         peerPublicKey.trim()
       );
-      setCalculationResult(res);
+      setIntermediateResult(res);
     } catch (err) {
-      setCalcError(err.message || 'Error al calcular la clave. Verifica que la clave pública sea válida para la curva seleccionada.');
+      setIntermediateError(err.message || 'Error al calcular clave intermedia. Verifica que la clave pública sea válida para la curva seleccionada.');
     } finally {
-      setLoadingCalc(false);
+      setLoadingIntermediate(false);
+    }
+  };
+
+  // Calcular Clave Final
+  const handleCalculateFinal = async () => {
+    if (!myKeyPair) {
+      alert('Primero genera tu par de claves en el Paso 1.');
+      return;
+    }
+    if (!peerIntermediateKey.trim()) {
+      alert('Por favor ingresa la clave intermedia recibida del otro participante.');
+      return;
+    }
+
+    setLoadingFinal(true);
+    setFinalError(null);
+    setFinalResult(null);
+    try {
+      const res = await calculateSharedKey(
+        selectedCurve,
+        myKeyPair.privateKeyHex,
+        peerIntermediateKey.trim()
+      );
+      setFinalResult(res);
+    } catch (err) {
+      setFinalError(err.message || 'Error al calcular clave final. Verifica que la clave intermedia sea válida para la curva seleccionada.');
+    } finally {
+      setLoadingFinal(false);
     }
   };
 
@@ -78,17 +116,17 @@ export default function App() {
     setTimeout(() => setCopiedLabel(null), 2000);
   };
 
-  const handlePasteClipboard = async () => {
+  const handlePasteClipboard = async (setter) => {
     try {
       const text = await navigator.clipboard.readText();
-      setPeerPublicKey(text.trim());
+      setter(text.trim());
     } catch (err) {
       alert('No se pudo acceder al portapapeles. Pégala manualmente con Ctrl + V.');
     }
   };
 
-  // Cargar archivo JSON/TXT
-  const handleFileUpload = (e) => {
+  // Cargar archivo
+  const handleFileUpload = (e, setter) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -96,35 +134,30 @@ export default function App() {
       const content = event.target.result.trim();
       try {
         const json = JSON.parse(content);
-        if (json.publicKeyHex) {
-          setPeerPublicKey(json.publicKeyHex);
+        if (json.uncompressedHex) {
+          setter(json.uncompressedHex);
+        } else if (json.publicKeyHex) {
+          setter(json.publicKeyHex);
         } else if (typeof json === 'string') {
-          setPeerPublicKey(json);
+          setter(json);
         } else {
-          setPeerPublicKey(content);
+          setter(content);
         }
       } catch (err) {
-        setPeerPublicKey(content);
+        setter(content);
       }
     };
     reader.readAsText(file);
   };
 
-  // Descargar mi clave pública
-  const handleDownloadMyPublicKey = () => {
-    if (!myKeyPair) return;
-    const data = JSON.stringify({
-      curva: selectedCurve,
-      publicKeyHex: myKeyPair.publicKeyHex,
-      pointX: myKeyPair.pointX,
-      pointY: myKeyPair.pointY,
-      pem: myKeyPair.pemFormat
-    }, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
+  // Descargar archivo JSON
+  const downloadJsonFile = (fileName, data) => {
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `clave_publica_${selectedCurve}.json`;
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -156,8 +189,10 @@ export default function App() {
             onChange={(e) => {
               setSelectedCurve(e.target.value);
               setMyKeyPair(null);
-              setCalculationResult(null);
-              setCalcError(null);
+              setIntermediateResult(null);
+              setFinalResult(null);
+              setIntermediateError(null);
+              setFinalError(null);
             }}
             className="calc-select"
           >
@@ -177,14 +212,16 @@ export default function App() {
 
       {/* Contenido Principal de la Calculadora */}
       <main className="calc-main">
-        {/* PANEL 1: Generación de Claves */}
+        {/* ======================================================== */}
+        {/* SECCIÓN 1: Generación de Mi Par de Claves               */}
+        {/* ======================================================== */}
         <div className="calc-card">
           <div className="card-top">
             <span className="step-badge">Paso 1</span>
             <h2>Generar Par de Claves</h2>
           </div>
           <p className="card-description">
-            Genera un escalar privado secreto <code>d</code> y el punto público correspondiente <code>Q = d · G</code> usando la biblioteca Bouncy Castle sobre la curva {selectedCurve}.
+            Genera tu escalar privado secreto <code>d</code> y tu punto público <code>Q = d · G</code> sobre la curva {selectedCurve}.
           </p>
 
           <button
@@ -233,9 +270,15 @@ export default function App() {
                   <span className="label-text">Mi Clave Pública (Punto Q = d · G):</span>
                   <button
                     className="btn-link"
-                    onClick={handleDownloadMyPublicKey}
+                    onClick={() => downloadJsonFile(`mi_clave_publica_${selectedCurve}.json`, {
+                      curva: selectedCurve,
+                      publicKeyHex: myKeyPair.publicKeyHex,
+                      pointX: myKeyPair.pointX,
+                      pointY: myKeyPair.pointY,
+                      pem: myKeyPair.pemFormat
+                    })}
                   >
-                    💾 Descargar Archivo (USB)
+                    💾 Guardar para USB (.json)
                   </button>
                 </div>
                 <div className="key-input-display">
@@ -262,33 +305,35 @@ export default function App() {
           )}
         </div>
 
-        {/* PANEL 2: Introducir Clave Pública y Calcular Clave Final */}
+        {/* ======================================================== */}
+        {/* SECCIÓN 2: Cálculo de Clave Intermedia (Ronda 2)        */}
+        {/* ======================================================== */}
         <div className="calc-card">
           <div className="card-top">
-            <span className="step-badge">Paso 2</span>
-            <h2>Calcular Clave con la Clave Pública de Otro</h2>
+            <span className="step-badge badge-intermediate">Paso 2</span>
+            <h2>Calcular Clave Intermedia (Ronda 2)</h2>
           </div>
           <p className="card-description">
-            Introduce la clave pública recibida del otro participante (o la clave intermedia para la segunda ronda de 3 personas) para calcular el secreto compartido <code>S = d · Q_otro</code>.
+            Introduce la <strong>clave pública del participante previo</strong> para calcular la clave parcial intermedia: <code>Z = d · P_previo</code> (por ejemplo, Alice calcula <code>Z_AC = a · P_C = acG</code>).
           </p>
 
           <div className="input-group">
             <div className="input-actions-bar">
-              <label htmlFor="peerKeyInput">Clave Pública o Parcial Recibida:</label>
+              <label htmlFor="peerKeyInput">Clave Pública del Participante Previo (P_previo):</label>
               <div className="input-bar-buttons">
                 <button
                   type="button"
                   className="btn-mini-action"
-                  onClick={handlePasteClipboard}
+                  onClick={() => handlePasteClipboard(setPeerPublicKey)}
                 >
                   📋 Pegar
                 </button>
                 <label className="btn-mini-action file-upload-btn">
-                  📂 Cargar Archivo
+                  📂 Cargar de USB
                   <input
                     type="file"
                     accept=".json,.txt"
-                    onChange={handleFileUpload}
+                    onChange={(e) => handleFileUpload(e, setPeerPublicKey)}
                     style={{ display: 'none' }}
                   />
                 </label>
@@ -299,64 +344,176 @@ export default function App() {
               id="peerKeyInput"
               rows="3"
               className="calc-textarea"
-              placeholder="Pega aquí la clave pública (formato hexadecimal 04... o coordenadas)"
+              placeholder="Pega aquí la clave pública previa (ej. 04... o coordenadas)"
               value={peerPublicKey}
               onChange={(e) => setPeerPublicKey(e.target.value)}
             />
           </div>
 
           <button
-            className="btn-action-primary calculate-btn"
-            onClick={handleCalculateShared}
-            disabled={loadingCalc || !peerPublicKey.trim()}
+            className="btn-action-primary calculate-intermediate-btn"
+            onClick={handleCalculateIntermediate}
+            disabled={loadingIntermediate || !peerPublicKey.trim()}
           >
-            {loadingCalc ? 'Calculando...' : '⚡ Calcular Clave Compartida'}
+            {loadingIntermediate ? 'Calculando Intermedia...' : '⚡ Calcular Clave Intermedia (Z = d · P_previo)'}
           </button>
 
-          {calcError && (
+          {intermediateError && (
             <div className="calc-error-box">
-              ⚠️ {calcError}
+              ⚠️ {intermediateError}
             </div>
           )}
 
-          {/* Resultado del Cálculo */}
-          {calculationResult && (
+          {/* Resultado de la Clave Intermedia */}
+          {intermediateResult && (
+            <div className="calc-result-box intermediate-border">
+              <div className="success-header">
+                <span className="check-icon">🔹</span>
+                <h4>¡Clave Intermedia Calculada con Éxito!</h4>
+              </div>
+
+              {/* Tiempo de Cómputo Intermedio */}
+              <div className="time-indicator highlight-time-inter">
+                ⏱ <strong>Tiempo de cómputo intermedio:</strong> {intermediateResult.computationTimeMs} ms ({intermediateResult.computationTimeNanos.toLocaleString()} ns)
+              </div>
+
+              {/* Punto Intermedio Z */}
+              <div className="key-row">
+                <div className="key-row-header">
+                  <span className="label-text">Punto Intermedio Z (enviar al siguiente participante por USB):</span>
+                  <button
+                    className="btn-link"
+                    onClick={() => downloadJsonFile(`clave_intermedia_${selectedCurve}.json`, {
+                      curva: selectedCurve,
+                      uncompressedHex: intermediateResult.uncompressedHex,
+                      pointX: intermediateResult.pointX,
+                      pointY: intermediateResult.pointY,
+                    })}
+                  >
+                    💾 Guardar para USB (.json)
+                  </button>
+                </div>
+                <div className="key-input-display">
+                  <code className="mono-text inter-key-text">{intermediateResult.uncompressedHex}</code>
+                  <button
+                    className="btn-copy-mini"
+                    onClick={() => copyToClipboard(intermediateResult.uncompressedHex, 'inter_point')}
+                  >
+                    {copiedLabel === 'inter_point' ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+                <div className="coord-grid">
+                  <div>
+                    <span className="sub-tag">Coord X (Punto Z):</span>
+                    <code className="mini-coord">{intermediateResult.pointX}</code>
+                  </div>
+                  <div>
+                    <span className="sub-tag">Coord Y (Punto Z):</span>
+                    <code className="mini-coord">{intermediateResult.pointY}</code>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ======================================================== */}
+        {/* SECCIÓN 3: Cálculo de Clave Final Compartida (Ronda 3)   */}
+        {/* ======================================================== */}
+        <div className="calc-card">
+          <div className="card-top">
+            <span className="step-badge badge-final">Paso 3</span>
+            <h2>Calcular Clave Final Compartida (Ronda 3)</h2>
+          </div>
+          <p className="card-description">
+            Introduce la <strong>clave intermedia recibida del otro participante</strong> para calcular el punto final común: <code>K = d · Z_recibido = (abc)G</code> y derivar la clave simétrica con <strong>KDF SHA-256</strong>.
+          </p>
+
+          <div className="input-group">
+            <div className="input-actions-bar">
+              <label htmlFor="peerIntermediateInput">Clave Intermedia Recibida (Z_recibido):</label>
+              <div className="input-bar-buttons">
+                <button
+                  type="button"
+                  className="btn-mini-action"
+                  onClick={() => handlePasteClipboard(setPeerIntermediateKey)}
+                >
+                  📋 Pegar
+                </button>
+                <label className="btn-mini-action file-upload-btn">
+                  📂 Cargar de USB
+                  <input
+                    type="file"
+                    accept=".json,.txt"
+                    onChange={(e) => handleFileUpload(e, setPeerIntermediateKey)}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <textarea
+              id="peerIntermediateInput"
+              rows="3"
+              className="calc-textarea"
+              placeholder="Pega aquí la clave intermedia recibida (ej. 04... o punto parcial Z)"
+              value={peerIntermediateKey}
+              onChange={(e) => setPeerIntermediateKey(e.target.value)}
+            />
+          </div>
+
+          <button
+            className="btn-action-primary calculate-final-btn"
+            onClick={handleCalculateFinal}
+            disabled={loadingFinal || !peerIntermediateKey.trim()}
+          >
+            {loadingFinal ? 'Calculando Clave Final...' : '🛡️ Calcular Clave Final Compartida (K = d · Z_recibido)'}
+          </button>
+
+          {finalError && (
+            <div className="calc-error-box">
+              ⚠️ {finalError}
+            </div>
+          )}
+
+          {/* Resultado de la Clave Final */}
+          {finalResult && (
             <div className="calc-result-box success-border">
               <div className="success-header">
                 <span className="check-icon">✅</span>
-                <h4>¡Cálculo Realizado Exitosamente!</h4>
+                <h4>¡Clave Final Compartida Derivada Exitosamente!</h4>
               </div>
 
-              {/* Muestra del Tiempo Requerida */}
+              {/* Tiempo de Cómputo Final */}
               <div className="time-indicator highlight-time">
-                ⏱ <strong>Tiempo de cómputo:</strong> {calculationResult.computationTimeMs} ms ({calculationResult.computationTimeNanos.toLocaleString()} ns)
+                ⏱ <strong>Tiempo de cómputo final:</strong> {finalResult.computationTimeMs} ms ({finalResult.computationTimeNanos.toLocaleString()} ns)
               </div>
 
-              {/* Punto Resultante en la Curva */}
+              {/* Punto Resultante en la Curva abcG */}
               <div className="key-row">
-                <span className="label-text">Punto Resultante en la Curva (S = d · Q_otro):</span>
+                <span className="label-text">Punto Común en la Curva (S = (abc) · G):</span>
                 <div className="coord-grid">
                   <div>
-                    <span className="sub-tag">Coord X:</span>
-                    <code className="mini-coord">{calculationResult.pointX}</code>
+                    <span className="sub-tag">Coord X (Punto Final):</span>
+                    <code className="mini-coord">{finalResult.pointX}</code>
                   </div>
                   <div>
-                    <span className="sub-tag">Coord Y:</span>
-                    <code className="mini-coord">{calculationResult.pointY}</code>
+                    <span className="sub-tag">Coord Y (Punto Final):</span>
+                    <code className="mini-coord">{finalResult.pointY}</code>
                   </div>
                 </div>
               </div>
 
-              {/* Clave Final Derivada */}
+              {/* Clave Final Derivada SHA-256 */}
               <div className="key-row">
                 <div className="key-row-header">
-                  <span className="label-text">Clave Final Derivada (KDF SHA-256 de 256 bits):</span>
+                  <span className="label-text">Clave Final Secreta Compartida (KDF SHA-256 de 256 bits):</span>
                 </div>
                 <div className="key-input-display final-secret-box">
-                  <code className="mono-text final-secret-text">{calculationResult.derivedKeySha256Hex}</code>
+                  <code className="mono-text final-secret-text">{finalResult.derivedKeySha256Hex}</code>
                   <button
                     className="btn-copy-mini"
-                    onClick={() => copyToClipboard(calculationResult.derivedKeySha256Hex, 'final_secret')}
+                    onClick={() => copyToClipboard(finalResult.derivedKeySha256Hex, 'final_secret')}
                   >
                     {copiedLabel === 'final_secret' ? '✓ Copiado' : 'Copiar'}
                   </button>
@@ -369,7 +526,7 @@ export default function App() {
 
       {/* Footer Mínimo */}
       <footer className="calc-footer">
-        <span>ESCOM - IPN • Práctica 5: Diffie-Hellman con Curvas Elípticas (ECDH)</span>
+        <span>ESCOM - IPN • Práctica 5: Diffie-Hellman con Curvas Elípticas (ECDH Tripartito)</span>
         <span className="footer-doc-note">
           Nota: Los diagramas, tablas comparativas, análisis de complejidad y respuestas teóricas se encuentran documentados en el <code>README.md</code> para el reporte escrito.
         </span>
